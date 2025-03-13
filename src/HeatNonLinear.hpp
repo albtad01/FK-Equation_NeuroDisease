@@ -37,47 +37,68 @@ public:
   // Physical dimension (1D, 2D, 3D)
   static constexpr unsigned int dim = 3;
 
-  // Function for the mu_0 coefficient.
-  class FunctionMu0 : public Function<dim>
+  // Function for the D coefficient.
+  class FunctionD : public Function<dim>
   {
-  public:
-    virtual double
-    value(const Point<dim> & /*p*/,
-          const unsigned int /*component*/ = 0) const override
+    public:
+    virtual void
+    tensor_value(const Point<dim> & p,
+                 Tensor<2, dim> &values) const
     {
-      return 0.1;
+      Tensor<1, dim> n;                  // Normal vector. using point coordinates as direction for now.
+      // TO DO there are 3/4 different ways to do this (also in value function)
+      for(unsigned int i = 0; i < dim; ++i)
+      {
+        n[i] = p[i]/p.norm();
+      }
+      
+      values = outer_product(n, n);
+
+      for(unsigned int i = 0; i < dim; ++i)
+      {
+        for(unsigned int j = 0; j < dim; ++j)
+        {
+          values[i][j] *= d_axn;
+        }
+      }
+      
+      for(unsigned int i = 0; i < dim; ++i)
+      {
+        values[i][i] += d_ext;
+      }
     }
+
+    virtual double
+    value(const Point<dim> & p,
+          const unsigned int col = 0,
+          const unsigned int row = 0) const
+    {
+      Tensor<1, dim> n;
+      for(unsigned int i = 0; i < dim; ++i){
+        n[i] = p[i]/p.norm();
+      }
+      return outer_product(n, n)[col][row] * d_axn + d_ext * (col == row ? 1 : 0);
+    }
+
+    protected:
+    const double d_ext = 0.0;                  // External diffusion coefficient.
+    const double d_axn = 0.0;                  // Axonal diffusion coefficient.
   };
 
-  // Function for the mu_1 coefficient.
-  class FunctionMu1 : public Function<dim>
+  // Function for the alpha coefficient.
+  class FunctionAlpha : public Function<dim>
   {
   public:
     virtual double
     value(const Point<dim> & /*p*/,
           const unsigned int /*component*/ = 0) const override
     {
-      return 1.0;
+      return 1.0;                              // Conversion rate coefficient.
     }
   };
 
   // Function for the forcing term.
   class ForcingTerm : public Function<dim>
-  {
-  public:
-    virtual double
-    value(const Point<dim> & /*p*/,
-          const unsigned int /*component*/ = 0) const override
-    {
-      if (get_time() < 0.25)
-        return 2.0;
-      else
-        return 0.0;
-    }
-  };
-
-  // Function for Dirichlet boundary conditions.
-  class FunctionG : public Function<dim>
   {
   public:
     virtual double
@@ -155,16 +176,13 @@ protected:
   // Problem definition. ///////////////////////////////////////////////////////
 
   // mu_0 coefficient.
-  FunctionMu0 mu_0;
+  FunctionD D;
 
   // mu_1 coefficient.
-  FunctionMu1 mu_1;
+  FunctionAlpha alpha;
 
   // Forcing term.
   ForcingTerm forcing_term;
-
-  // Dirichlet boundary conditions.
-  FunctionG function_g;
 
   // Initial conditions.
   FunctionU0 u_0;
