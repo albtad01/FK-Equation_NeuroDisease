@@ -16,6 +16,7 @@
 #include <deal.II/fe/mapping_fe.h>
 
 #include <deal.II/grid/grid_in.h>
+#include <deal.II/grid/grid_tools.h>
 
 #include <deal.II/lac/solver_cg.h>
 #include <deal.II/lac/trilinos_precondition.h>
@@ -35,7 +36,7 @@ class HeatNonLinear
 {
 public:
   // Physical dimension (1D, 2D, 3D)
-  static constexpr unsigned int dim = 3;
+  static constexpr unsigned int dim = 2;
 
   // Function for the D coefficient.
   class FunctionD : public Function<dim>
@@ -45,11 +46,11 @@ public:
     tensor_value(const Point<dim> & p,
                  Tensor<2, dim> &values) const
     {
-      Tensor<1, dim> n;                  // Normal vector. using point coordinates as direction for now.
-      // TO DO there are 3/4 different ways to do this (also in value function)
+      Tensor<1, dim> n;                  // Axonal direction versor. Using point coordinates as direction for now.
+      // TO DO there are 3/4 different other ways to do this (also to be done in value function)
       for(unsigned int i = 0; i < dim; ++i)
       {
-        n[i] = p[i]/p.norm();
+        n[i] = p[i]/p.norm(); // Value might change when mesh is distributed?
       }
       
       values = outer_product(n, n);
@@ -81,8 +82,8 @@ public:
     }
 
     protected:
-    const double d_ext = 0.0;                  // External diffusion coefficient.
-    const double d_axn = 0.0;                  // Axonal diffusion coefficient.
+    const double d_ext = 0.001;                  // External diffusion coefficient.
+    const double d_axn = 0.001;                  // Axonal diffusion coefficient.
   };
 
   // Function for the alpha coefficient.
@@ -93,7 +94,7 @@ public:
     value(const Point<dim> & /*p*/,
           const unsigned int /*component*/ = 0) const override
     {
-      return 1.0;                              // Conversion rate coefficient.
+      return 0.5;                              // Conversion rate coefficient.
     }
   };
 
@@ -114,10 +115,13 @@ public:
   {
   public:
     virtual double
-    value(const Point<dim> & /*p*/,
+    value(const Point<dim> & p,
           const unsigned int /*component*/ = 0) const override
     {
-      return 0.0;
+      if (p[0] > 0.45 && p[0] < 0.55)
+        return 1.0;
+      else
+        return 0.0;
     }
   };
 
@@ -126,7 +130,8 @@ public:
   HeatNonLinear(const std::string  &mesh_file_name_,
                 const unsigned int &r_,
                 const double       &T_,
-                const double       &deltat_)
+                const double       &deltat_,
+                const double       &theta_)
     : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , pcout(std::cout, mpi_rank == 0)
@@ -134,6 +139,7 @@ public:
     , mesh_file_name(mesh_file_name_)
     , r(r_)
     , deltat(deltat_)
+    , theta(theta_)
     , mesh(MPI_COMM_WORLD)
   {}
 
@@ -203,6 +209,9 @@ protected:
 
   // Time step.
   const double deltat;
+
+  // Theta parameter of the theta method.
+  const double theta;
 
   // Mesh.
   parallel::fullydistributed::Triangulation<dim> mesh;

@@ -10,8 +10,9 @@ main(int argc, char *argv[])
 
   const double T      = 1.0;
   const double deltat = 0.05;
+  const double theta  = 1.0;
 
-  HeatNonLinear problem("../mesh/mesh-cube-20.msh", degree, T, deltat);
+  HeatNonLinear problem("../mesh/mesh-square-20.msh", degree, T, deltat, theta);
 
   problem.setup();
   problem.solve();

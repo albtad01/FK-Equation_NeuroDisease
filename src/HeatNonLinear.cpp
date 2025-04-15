@@ -109,6 +109,7 @@ HeatNonLinear::assemble_system()
 
   // Value of the solution at previous timestep (un) on current cell.
   std::vector<double> solution_old_loc(n_q);
+  std::vector<Tensor<1, dim>> solution_old_gradient_loc(n_q);
 
   forcing_term.set_time(time);
 
@@ -125,14 +126,13 @@ HeatNonLinear::assemble_system()
       fe_values.get_function_values(solution, solution_loc);
       fe_values.get_function_gradients(solution, solution_gradient_loc);
       fe_values.get_function_values(solution_old, solution_old_loc);
+      fe_values.get_function_gradients(solution_old, solution_old_gradient_loc);
 
       for (unsigned int q = 0; q < n_q; ++q)
         {
           // Evaluate coefficients on this quadrature node.
-          const double mu_0_loc = mu_0.value(fe_values.quadrature_point(q));
-          const double mu_1_loc = mu_1.value(fe_values.quadrature_point(q));
-          const double f_loc =
-            forcing_term.value(fe_values.quadrature_point(q));
+          Tensor<2, dim> D_loc;
+          D.tensor_value(fe_values.quadrature_point(q), D_loc);
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
@@ -144,19 +144,16 @@ HeatNonLinear::assemble_system()
                                        fe_values.JxW(q);
 
                   // Non-linear stiffness matrix, first term.
-                  cell_matrix(i, j) +=
-                    (mu_0_loc + 2.0 * mu_1_loc * fe_values.shape_value(j, q) *
-                                  solution_loc[q]) *
-                    scalar_product(solution_gradient_loc[q],
-                                   fe_values.shape_grad(i, q)) *
-                    fe_values.JxW(q);
+                  cell_matrix(i, j) += theta * fe_values.shape_grad(i, q) *
+                                       (D_loc * fe_values.shape_grad(j, q)) *
+                                       fe_values.JxW(q);
 
                   // Non-linear stiffness matrix, second term.
-                  cell_matrix(i, j) +=
-                    (mu_0_loc + mu_1_loc * solution_loc[q] * solution_loc[q]) *
-                    scalar_product(fe_values.shape_grad(j, q),
-                                   fe_values.shape_grad(i, q)) *
-                    fe_values.JxW(q);
+                  cell_matrix(i, j) += theta * alpha.value(fe_values.quadrature_point(q)) *
+                                       (2 * solution_loc[q] + 1) *
+                                       fe_values.shape_value(i, q) *
+                                       fe_values.shape_value(j, q) *
+                                       fe_values.JxW(q);
                 }
 
               // Assemble the residual vector (with changed sign).
@@ -167,15 +164,23 @@ HeatNonLinear::assemble_system()
                                   fe_values.JxW(q);
 
               // Diffusion term.
-              cell_residual(i) -=
-                (mu_0_loc + mu_1_loc * solution_loc[q] * solution_loc[q]) *
-                scalar_product(solution_gradient_loc[q],
-                               fe_values.shape_grad(i, q)) *
-                fe_values.JxW(q);
+              cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
+                                  (D_loc * solution_gradient_loc[q]) *
+                                  fe_values.JxW(q);
+              cell_residual(i) += theta * alpha.value(fe_values.quadrature_point(q)) *
+                                  (1 - solution_loc[q]) * solution_loc[q] *
+                                  fe_values.shape_value(i, q) *
+                                  fe_values.JxW(q);
+              cell_residual(i) -= (1 - theta) * fe_values.shape_grad(i, q) *
+                                  (D_loc * solution_old_gradient_loc[q]) *
+                                  fe_values.JxW(q);
+              cell_residual(i) += (1 - theta) * alpha.value(fe_values.quadrature_point(q)) *
+                                  (1 - solution_old_loc[q]) * solution_old_loc[q] *
+                                  fe_values.shape_value(i, q) *
+                                  fe_values.JxW(q);
 
-              // Forcing term.
-              cell_residual(i) +=
-                f_loc * fe_values.shape_value(i, q) * fe_values.JxW(q);
+              // Forcing term. == 0
+              // cell_residual(i) += f_loc * fe_values.shape_value(i, q) * fe_values.JxW(q);
             }
         }
 
@@ -240,10 +245,10 @@ HeatNonLinear::solve_newton()
     IndexSet dirichlet_dofs = DoFTools::extract_boundary_dofs(dof_handler);
     dirichlet_dofs          = dirichlet_dofs & dof_handler.locally_owned_dofs();
 
-    function_g.set_time(time);
+    u_0.set_time(time);
 
     TrilinosWrappers::MPI::Vector vector_dirichlet(solution_owned);
-    VectorTools::interpolate(dof_handler, function_g, vector_dirichlet);
+    VectorTools::interpolate(dof_handler, u_0, vector_dirichlet);
 
     for (const auto &idx : dirichlet_dofs)
       solution_owned[idx] = vector_dirichlet[idx];
