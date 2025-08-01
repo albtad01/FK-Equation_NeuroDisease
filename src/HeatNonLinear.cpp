@@ -192,7 +192,7 @@ HeatNonLinear::assemble_system()
 
   jacobian_matrix.compress(VectorOperation::add);
   residual_vector.compress(VectorOperation::add);
-
+/*
   // We apply Dirichlet boundary conditions.
   // The linear system solution is delta, which is the difference between
   // u_{n+1}^{(k+1)} and u_{n+1}^{(k)}. Both must satisfy the same Dirichlet
@@ -214,6 +214,7 @@ HeatNonLinear::assemble_system()
     MatrixTools::apply_boundary_values(
       boundary_values, jacobian_matrix, delta_owned, residual_vector, false);
   }
+*/
 }
 
 void

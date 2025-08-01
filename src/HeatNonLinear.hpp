@@ -36,7 +36,7 @@ class HeatNonLinear
 {
 public:
   // Physical dimension (1D, 2D, 3D)
-  static constexpr unsigned int dim = 2;
+  static constexpr unsigned int dim = 3;
 
   // Function for the D coefficient.
   class FunctionD : public Function<dim>
@@ -82,8 +82,8 @@ public:
     }
 
     protected:
-    const double d_ext = 0.001;                  // External diffusion coefficient.
-    const double d_axn = 0.001;                  // Axonal diffusion coefficient.
+    const double d_ext = 0.0005;                  // External diffusion coefficient.
+    const double d_axn = 0.0010;                  // Axonal diffusion coefficient.
   };
 
   // Function for the alpha coefficient.
@@ -94,7 +94,7 @@ public:
     value(const Point<dim> & /*p*/,
           const unsigned int /*component*/ = 0) const override
     {
-      return 0.5;                              // Conversion rate coefficient.
+      return 1.0;                              // Conversion rate coefficient.
     }
   };
 
@@ -111,6 +111,7 @@ public:
   };
 
   // Function for initial conditions.
+  // rescaled dimensions (0.01): ~~~ x: 0-0.83, y: 0-1.5, z: 0-1.17
   class FunctionU0 : public Function<dim>
   {
   public:
@@ -118,8 +119,8 @@ public:
     value(const Point<dim> & p,
           const unsigned int /*component*/ = 0) const override
     {
-      if (p[0] > 0.45 && p[0] < 0.55)
-        return 1.0;
+      if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
+        return 0.5;
       else
         return 0.0;
     }
