@@ -1,8 +1,16 @@
 #include "HeatNonLinear.hpp"
+#include <deal.II/lac/solver_minres.h>
+
+int HeatNonLinear::protein_type;
+int HeatNonLinear::axonal_field;
 
 void
-HeatNonLinear::setup()
+HeatNonLinear::setup(const int &protein_type_,
+                     const int &axonal_field_)
 {
+  protein_type = protein_type_;
+  axonal_field = axonal_field_;
+
   // Create the mesh.
   {
     pcout << "Initializing the mesh" << std::endl;
@@ -150,7 +158,7 @@ HeatNonLinear::assemble_system()
 
                   // Non-linear stiffness matrix, second term.
                   cell_matrix(i, j) += theta * alpha.value(fe_values.quadrature_point(q)) *
-                                       (2 * solution_loc[q] + 1) *
+                                       (2 * solution_loc[q] - 1) *
                                        fe_values.shape_value(i, q) *
                                        fe_values.shape_value(j, q) *
                                        fe_values.JxW(q);
@@ -163,7 +171,7 @@ HeatNonLinear::assemble_system()
                                   deltat * fe_values.shape_value(i, q) *
                                   fe_values.JxW(q);
 
-              // Diffusion term.
+              // Diffusion and Reaction terms.
               cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
                                   (D_loc * solution_gradient_loc[q]) *
                                   fe_values.JxW(q);
@@ -222,13 +230,21 @@ HeatNonLinear::solve_linear_system()
 {
   SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
 
-  SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
+  SolverMinRes<TrilinosWrappers::MPI::Vector> solver(solver_control);
+
   TrilinosWrappers::PreconditionSSOR      preconditioner;
   preconditioner.initialize(
     jacobian_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
 
+//  TrilinosWrappers::PreconditionILU      preconditioner;
+//    preconditioner.initialize(jacobian_matrix,
+//                                 TrilinosWrappers::PreconditionILU::AdditionalData(1.0));
+                 
+//   TrilinosWrappers::PreconditionAMG preconditioner;
+//   preconditioner.initialize(jacobian_matrix);
+
   solver.solve(jacobian_matrix, delta_owned, residual_vector, preconditioner);
-  pcout << "  " << solver_control.last_step() << " CG iterations" << std::endl;
+  pcout << "  " << solver_control.last_step() << " MINRES iterations" << std::endl;
 }
 
 void

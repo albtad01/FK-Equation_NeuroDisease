@@ -1,4 +1,4 @@
-Mesh.ScalingFactor = 0.01;
+Mesh.ScalingFactor = 1;
 Merge "brain-h3.0.stl";
 
 // Define a surface loop and volume

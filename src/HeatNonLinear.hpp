@@ -1,5 +1,6 @@
 #ifndef HEAT_NON_LINEAR_HPP
 #define HEAT_NON_LINEAR_HPP
+#define ISOTROPIC // WHITE_GRAY
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -38,7 +39,7 @@ public:
   // Physical dimension (1D, 2D, 3D)
   static constexpr unsigned int dim = 3;
 
-  // Function for the D coefficient.
+  // Function for the Diffusion tensor coefficient.
   class FunctionD : public Function<dim>
   {
     public:
@@ -46,26 +47,38 @@ public:
     tensor_value(const Point<dim> & p,
                  Tensor<2, dim> &values) const
     {
-      Tensor<1, dim> n;                  // Axonal direction versor. Using point coordinates as direction for now.
+      Tensor<1, dim> n;                  // Axonal direction versor.
       // TO DO there are 3/4 different other ways to do this (also to be done in value function)
-      for(unsigned int i = 0; i < dim; ++i)
-      {
-        n[i] = p[i]/p.norm(); // Value might change when mesh is distributed?
-      }
-      
-      values = outer_product(n, n);
-
-      for(unsigned int i = 0; i < dim; ++i)
-      {
-        for(unsigned int j = 0; j < dim; ++j)
+      switch (axonal_field){
+      case 1:
+        for(unsigned int i = 0; i < dim; ++i)
         {
-          values[i][j] *= d_axn;
+          n[i] = p[i]/p.norm(); // Value might change when mesh is distributed?
         }
-      }
-      
-      for(unsigned int i = 0; i < dim; ++i)
-      {
-        values[i][i] += d_ext;
+        
+        values = outer_product(n, n);
+
+        for(unsigned int i = 0; i < dim; ++i)
+        {
+          for(unsigned int j = 0; j < dim; ++j)
+          {
+            values[i][j] *= d_axn;
+          }
+        }
+        
+        for(unsigned int i = 0; i < dim; ++i)
+        {
+          values[i][i] += d_ext;
+        }
+        break;
+      case 2:
+        // Circular axonal diffusion coefficient, TBD
+        break;
+      case 3:
+        // Axonal based diffusion coefficient, TBD
+        break;
+      default:
+        AssertThrow(false, ExcMessage("Invalid axonal field type."));
       }
     }
 
@@ -75,15 +88,34 @@ public:
           const unsigned int row = 0) const
     {
       Tensor<1, dim> n;
-      for(unsigned int i = 0; i < dim; ++i){
-        n[i] = p[i]/p.norm();
+      switch (axonal_field) {
+        case 1:
+          for(unsigned int i = 0; i < dim; ++i) {
+            n[i] = p[i]/p.norm();
+          }
+          return outer_product(n, n)[col][row] * d_axn + d_ext * (col == row ? 1 : 0);
+          break;
+        case 2:
+          // Circular axonal diffusion coefficient, TBD
+          break;
+        case 3:
+          // Axonal based diffusion coefficient, TBD
+          break;
+        default:
+          AssertThrow(false, ExcMessage("Invalid axonal field type."));
       }
-      return outer_product(n, n)[col][row] * d_axn + d_ext * (col == row ? 1 : 0);
     }
 
     protected:
-    const double d_ext = 0.0005;                  // External diffusion coefficient.
-    const double d_axn = 0.0010;                  // Axonal diffusion coefficient.
+#ifdef ISOTROPIC
+    const double d_ext = 0.0005;                  // External diffusion coefficient, m^2/year.
+    const double d_axn = 0.0010;                  // Axonal diffusion coefficient, m^2/year.
+#elif defined(WHITE_GRAY) // Needs implementation to discriminate between white and gray matter, i use compiler flags because it modifies the structure of the code
+    const double d_ext_white;
+    const double d_ext_gray;
+    const double d_axn_white;
+    const double d_axn_gray;
+#endif
   };
 
   // Function for the alpha coefficient.
@@ -94,8 +126,16 @@ public:
     value(const Point<dim> & /*p*/,
           const unsigned int /*component*/ = 0) const override
     {
-      return 1.0;                              // Conversion rate coefficient.
+      return alp;
     }
+  
+  protected:
+#ifdef ISOTROPIC
+    const double alp = 1.0;                // Conversion rate coefficient, 1/year.
+#elif defined(WHITE_GRAY) // Needs implementation to discriminate between white and gray matter, i use compiler flags because it modifies the structure of the code
+    const double alp_white;
+    const double alp_gray;
+#endif
   };
 
   // Function for the forcing term.
@@ -111,7 +151,6 @@ public:
   };
 
   // Function for initial conditions.
-  // rescaled dimensions (0.01): ~~~ x: 0-0.83, y: 0-1.5, z: 0-1.17
   class FunctionU0 : public Function<dim>
   {
   public:
@@ -119,10 +158,25 @@ public:
     value(const Point<dim> & p,
           const unsigned int /*component*/ = 0) const override
     {
-      if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
-        return 0.5;
-      else
-        return 0.0;
+      switch (protein_type) {
+        case 1:
+          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
+            return 0.5;
+          else
+            return 1e-6; // Small value to avoid negative values in the solution
+          break;
+        case 2:
+          // Amyloid-beta initial condition, TBD
+          break;
+        case 3:
+          // Tau initial condition, TBD
+          break;
+        case 4:
+          // TDP-43 initial condition, TBD
+          break;
+        default:
+          AssertThrow(false, ExcMessage("Invalid protein type."));
+      }
     }
   };
 
@@ -146,7 +200,8 @@ public:
 
   // Initialization.
   void
-  setup();
+  setup(const int &protein_type_,
+        const int &axonal_field_);
 
   // Solve the problem.
   void
@@ -213,6 +268,12 @@ protected:
 
   // Theta parameter of the theta method.
   const double theta;
+
+  // Protein type (1: alpha-synuclein, 2: amyloid-beta, 3: tau, 4: TDP-43).
+  static int protein_type;
+
+  // Axonal field type (1: radial, 2: circular, 3: axonal).
+  static int axonal_field;
 
   // Mesh.
   parallel::fullydistributed::Triangulation<dim> mesh;
