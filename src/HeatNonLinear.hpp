@@ -1,6 +1,5 @@
 #ifndef HEAT_NON_LINEAR_HPP
 #define HEAT_NON_LINEAR_HPP
-#define ISOTROPIC // WHITE_GRAY
 
 #include <deal.II/base/conditional_ostream.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -42,6 +41,7 @@ public:
   // Function for the Diffusion tensor coefficient.
   class FunctionD : public Function<dim>
   {
+    // DIFFERENCIATE BETWEEN WHITE AND GRAY MATTER WITH DIFFERENT FUNCTIONS
     public:
     virtual void
     tensor_value(const Point<dim> & p,
@@ -107,15 +107,10 @@ public:
     }
 
     protected:
-#ifdef ISOTROPIC
-    const double d_ext = 0.0005;                  // External diffusion coefficient, m^2/year.
-    const double d_axn = 0.0010;                  // Axonal diffusion coefficient, m^2/year.
-#elif defined(WHITE_GRAY) // Needs implementation to discriminate between white and gray matter, i use compiler flags because it modifies the structure of the code
-    const double d_ext_white;
-    const double d_ext_gray;
-    const double d_axn_white;
-    const double d_axn_gray;
-#endif
+    const double d_ext = 0.0005;
+    const double d_ext_gray = 0.0005; // May be unnecessary, gray matter just uses d_ext only?
+    const double d_axn = 0.001;
+    const double d_axn_gray = 0.001; // May be unnecessary, white matter just uses d_axn in addition?
   };
 
   // Function for the alpha coefficient.
@@ -123,19 +118,15 @@ public:
   {
   public:
     virtual double
-    value(const Point<dim> & /*p*/,
+    value(const Point<dim> & /*p*/ = Point<dim>(),
           const unsigned int /*component*/ = 0) const override
     {
       return alp;
     }
   
   protected:
-#ifdef ISOTROPIC
-    const double alp = 1.0;                // Conversion rate coefficient, 1/year.
-#elif defined(WHITE_GRAY) // Needs implementation to discriminate between white and gray matter, i use compiler flags because it modifies the structure of the code
-    const double alp_white;
-    const double alp_gray;
-#endif
+    const double alp = 1.0;
+    const double alp_gray = 0.5;
   };
 
   // Function for the forcing term.
@@ -201,7 +192,8 @@ public:
   // Initialization.
   void
   setup(const int &protein_type_,
-        const int &axonal_field_);
+        const int &axonal_field_,
+        const int &matter_type_);
 
   // Solve the problem.
   void
@@ -274,6 +266,9 @@ protected:
 
   // Axonal field type (1: radial, 2: circular, 3: axonal).
   static int axonal_field;
+
+  // Brain matter type (0: isotropic, 1: white/gray matter).
+  static int matter_type;
 
   // Mesh.
   parallel::fullydistributed::Triangulation<dim> mesh;

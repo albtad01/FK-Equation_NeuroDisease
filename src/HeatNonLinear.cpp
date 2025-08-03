@@ -3,13 +3,16 @@
 
 int HeatNonLinear::protein_type;
 int HeatNonLinear::axonal_field;
+int HeatNonLinear::matter_type;
 
 void
 HeatNonLinear::setup(const int &protein_type_,
-                     const int &axonal_field_)
+                     const int &axonal_field_,
+                     const int &matter_type_)
 {
   protein_type = protein_type_;
   axonal_field = axonal_field_;
+  matter_type = matter_type_;
 
   // Create the mesh.
   {
@@ -30,6 +33,7 @@ HeatNonLinear::setup(const int &protein_type_,
 
     pcout << "  Number of elements = " << mesh.n_global_active_cells()
           << std::endl;
+    // EVALUATE HERE WHITE OR GRAY MATTER AND ASSIGN TO CELL
   }
 
   pcout << "-----------------------------------------------" << std::endl;
@@ -136,6 +140,10 @@ HeatNonLinear::assemble_system()
       fe_values.get_function_values(solution_old, solution_old_loc);
       fe_values.get_function_gradients(solution_old, solution_old_gradient_loc);
 
+      // DECIDE HERE ALPHA BASED ON CELL MATTER TYPE INSTEAD OF QUADRATURE POINT SINCE IT IS CONSTANT
+      double alpha_loc = alpha.value();
+      // MIGHT BE DONE FOR D AS WELL USING VALUE() INSTEAD OF TENSOR_VALUE() IN A FOR LOOP ON QUADRATURE
+      // if(matter_type) -> if(cell->material_id()) -> alpha/D_loc = alpha/D.white_ or .gray_value()
       for (unsigned int q = 0; q < n_q; ++q)
         {
           // Evaluate coefficients on this quadrature node.
@@ -157,7 +165,7 @@ HeatNonLinear::assemble_system()
                                        fe_values.JxW(q);
 
                   // Non-linear stiffness matrix, second term.
-                  cell_matrix(i, j) += theta * alpha.value(fe_values.quadrature_point(q)) *
+                  cell_matrix(i, j) += theta * alpha_loc *
                                        (2 * solution_loc[q] - 1) *
                                        fe_values.shape_value(i, q) *
                                        fe_values.shape_value(j, q) *
@@ -175,14 +183,14 @@ HeatNonLinear::assemble_system()
               cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
                                   (D_loc * solution_gradient_loc[q]) *
                                   fe_values.JxW(q);
-              cell_residual(i) += theta * alpha.value(fe_values.quadrature_point(q)) *
+              cell_residual(i) += theta * alpha_loc *
                                   (1 - solution_loc[q]) * solution_loc[q] *
                                   fe_values.shape_value(i, q) *
                                   fe_values.JxW(q);
               cell_residual(i) -= (1 - theta) * fe_values.shape_grad(i, q) *
                                   (D_loc * solution_old_gradient_loc[q]) *
                                   fe_values.JxW(q);
-              cell_residual(i) += (1 - theta) * alpha.value(fe_values.quadrature_point(q)) *
+              cell_residual(i) += (1 - theta) * alpha_loc *
                                   (1 - solution_old_loc[q]) * solution_old_loc[q] *
                                   fe_values.shape_value(i, q) *
                                   fe_values.JxW(q);
