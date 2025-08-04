@@ -41,16 +41,15 @@ public:
   // Function for the Diffusion tensor coefficient.
   class FunctionD : public Function<dim>
   {
-    // DIFFERENCIATE BETWEEN WHITE AND GRAY MATTER WITH DIFFERENT FUNCTIONS
+    // TODO DIFFERENCIATE BETWEEN WHITE AND GRAY MATTER WITH DIFFERENT FUNCTIONS
     public:
     virtual void
     tensor_value(const Point<dim> & p,
                  Tensor<2, dim> &values) const
     {
       Tensor<1, dim> n;                  // Axonal direction versor.
-      // TO DO there are 3/4 different other ways to do this (also to be done in value function)
       switch (axonal_field){
-      case 1:
+      case 1: // TODO implement real function
         for(unsigned int i = 0; i < dim; ++i)
         {
           n[i] = p[i]/p.norm(); // Value might change when mesh is distributed?
@@ -72,10 +71,10 @@ public:
         }
         break;
       case 2:
-        // Circular axonal diffusion coefficient, TBD
+        // TODO Circular axonal diffusion coefficient
         break;
       case 3:
-        // Axonal based diffusion coefficient, TBD
+        // TODO Axonal based diffusion coefficient
         break;
       default:
         AssertThrow(false, ExcMessage("Invalid axonal field type."));
@@ -89,24 +88,24 @@ public:
     {
       Tensor<1, dim> n;
       switch (axonal_field) {
-        case 1:
+        case 1: // TODO implement real function
           for(unsigned int i = 0; i < dim; ++i) {
             n[i] = p[i]/p.norm();
           }
           return outer_product(n, n)[col][row] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
         case 2:
-          // Circular axonal diffusion coefficient, TBD
+          // TODO Circular axonal diffusion coefficient
           break;
         case 3:
-          // Axonal based diffusion coefficient, TBD
+          // TODO Axonal based diffusion coefficient
           break;
         default:
           AssertThrow(false, ExcMessage("Invalid axonal field type."));
       }
     }
 
-    protected:
+    protected: // TODO see if gray necessary or not
     const double d_ext = 0.0005;
     const double d_ext_gray = 0.0005; // May be unnecessary, gray matter just uses d_ext only?
     const double d_axn = 0.001;
@@ -124,7 +123,7 @@ public:
       return alp;
     }
   
-  protected:
+  protected: // TODO see if gray necessary or not
     const double alp = 1.0;
     const double alp_gray = 0.5;
   };
@@ -151,19 +150,20 @@ public:
     {
       switch (protein_type) {
         case 1:
+          // TODO implement real function
           if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
             return 0.5;
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;
         case 2:
-          // Amyloid-beta initial condition, TBD
+          // TODO Amyloid-beta initial condition
           break;
         case 3:
-          // Tau initial condition, TBD
+          // TODO Tau initial condition
           break;
         case 4:
-          // TDP-43 initial condition, TBD
+          // TODO TDP-43 initial condition
           break;
         default:
           AssertThrow(false, ExcMessage("Invalid protein type."));

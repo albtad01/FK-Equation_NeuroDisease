@@ -33,7 +33,7 @@ HeatNonLinear::setup(const int &protein_type_,
 
     pcout << "  Number of elements = " << mesh.n_global_active_cells()
           << std::endl;
-    // EVALUATE HERE WHITE OR GRAY MATTER AND ASSIGN TO CELL
+    // TODO EVALUATE HERE WHITE OR GRAY MATTER AND ASSIGN TO CELL
   }
 
   pcout << "-----------------------------------------------" << std::endl;
@@ -140,7 +140,7 @@ HeatNonLinear::assemble_system()
       fe_values.get_function_values(solution_old, solution_old_loc);
       fe_values.get_function_gradients(solution_old, solution_old_gradient_loc);
 
-      // DECIDE HERE ALPHA BASED ON CELL MATTER TYPE INSTEAD OF QUADRATURE POINT SINCE IT IS CONSTANT
+      // TODO DECIDE HERE ALPHA BASED ON CELL MATTER TYPE INSTEAD OF QUADRATURE POINT SINCE IT IS CONSTANT
       double alpha_loc = alpha.value();
       // MIGHT BE DONE FOR D AS WELL USING VALUE() INSTEAD OF TENSOR_VALUE() IN A FOR LOOP ON QUADRATURE
       // if(matter_type) -> if(cell->material_id()) -> alpha/D_loc = alpha/D.white_ or .gray_value()
@@ -179,16 +179,17 @@ HeatNonLinear::assemble_system()
                                   deltat * fe_values.shape_value(i, q) *
                                   fe_values.JxW(q);
 
-              // Diffusion and Reaction terms.
+              // Diffusion terms.
               cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
                                   (D_loc * solution_gradient_loc[q]) *
                                   fe_values.JxW(q);
+              cell_residual(i) -= (1 - theta) * fe_values.shape_grad(i, q) *
+                                  (D_loc * solution_old_gradient_loc[q]) *
+                                  fe_values.JxW(q);
+              // Reaction terms.
               cell_residual(i) += theta * alpha_loc *
                                   (1 - solution_loc[q]) * solution_loc[q] *
                                   fe_values.shape_value(i, q) *
-                                  fe_values.JxW(q);
-              cell_residual(i) -= (1 - theta) * fe_values.shape_grad(i, q) *
-                                  (D_loc * solution_old_gradient_loc[q]) *
                                   fe_values.JxW(q);
               cell_residual(i) += (1 - theta) * alpha_loc *
                                   (1 - solution_old_loc[q]) * solution_old_loc[q] *
@@ -234,7 +235,7 @@ HeatNonLinear::assemble_system()
 }
 
 void
-HeatNonLinear::solve_linear_system()
+HeatNonLinear::solve_linear_system() // TODO find best solver and preconditioner
 {
   SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
 
@@ -266,7 +267,7 @@ HeatNonLinear::solve_newton()
 
   // We apply the boundary conditions to the initial guess (which is stored in
   // solution_owned and solution).
-  {
+  { // TODO is this necessary?
     IndexSet dirichlet_dofs = DoFTools::extract_boundary_dofs(dof_handler);
     dirichlet_dofs          = dirichlet_dofs & dof_handler.locally_owned_dofs();
 
