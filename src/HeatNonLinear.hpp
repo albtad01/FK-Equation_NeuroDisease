@@ -149,13 +149,15 @@ public:
           const unsigned int /*component*/ = 0) const override
     {
       switch (protein_type) {
-        case 1:
-          // TODO Amyloid-beta initial condition
-          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
-            return 0.5;
+        case 1:{ // Amyloid-beta initial condition (two spheres and a paraboloid)
+          double z = -8.0/605.0 * p[1] * p[1] + 2.0 * p[1] + 25.62; // Get point of the parabola
+          if ((p[0] - 50.0) * (p[0] - 50.0) + (p[1] - 40.0) * (p[1] - 40.0) + (p[2] - 50.0) * (p[2] - 50.0) < 20.0*20.0 ||
+              ((p[0] - 50.0) * (p[0] - 50.0) + (p[2] - z) * (p[2] - z) < 30.0*30.0 &&
+              (p[0] - 60.0) * (p[0] - 60.0) + (p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 110.0) * (p[2] - 110.0) > 20.0*20.0))
+            return 0.1;
           else
             return 1e-6; // Small value to avoid negative values in the solution
-          break;
+          break;}
         case 2:
           // TODO Tau initial condition
           if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)

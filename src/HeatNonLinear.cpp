@@ -166,7 +166,7 @@ HeatNonLinear::assemble_system()
 
                   // Non-linear stiffness matrix, second term.
                   cell_matrix(i, j) += theta * alpha_loc *
-                                       (2 * solution_loc[q] - 1) *
+                                       (2.0 * solution_loc[q] - 1.0) *
                                        fe_values.shape_value(i, q) *
                                        fe_values.shape_value(j, q) *
                                        fe_values.JxW(q);
