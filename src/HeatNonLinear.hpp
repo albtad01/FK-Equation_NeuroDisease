@@ -150,20 +150,32 @@ public:
     {
       switch (protein_type) {
         case 1:
-          // TODO implement real function
+          // TODO Amyloid-beta initial condition
           if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
             return 0.5;
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;
         case 2:
-          // TODO Amyloid-beta initial condition
+          // TODO Tau initial condition
+          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
+            return 0.5;
+          else
+            return 1e-6; // Small value to avoid negative values in the solution
           break;
         case 3:
-          // TODO Tau initial condition
+          // TODO Alpha-Synuclein initial condition
+          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
+            return 0.5;
+          else
+            return 1e-6; // Small value to avoid negative values in the solution
           break;
         case 4:
           // TODO TDP-43 initial condition
+          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
+            return 0.5;
+          else
+            return 1e-6; // Small value to avoid negative values in the solution
           break;
         default:
           AssertThrow(false, ExcMessage("Invalid protein type."));
@@ -261,7 +273,7 @@ protected:
   // Theta parameter of the theta method.
   const double theta;
 
-  // Protein type (1: alpha-synuclein, 2: amyloid-beta, 3: tau, 4: TDP-43).
+  // Protein type (1: amyloid-beta, 2: tau, 3: alpha-synuclein, 4: TDP-43).
   static int protein_type;
 
   // Axonal field type (1: radial, 2: circular, 3: axonal).
