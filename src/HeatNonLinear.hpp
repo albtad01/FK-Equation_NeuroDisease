@@ -158,10 +158,9 @@ public:
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;}
-        case 2:
-          // TODO Tau initial condition
-          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
-            return 0.5;
+        case 2: // Tau initial condition (a sphere)
+          if ((p[0] - 50.0) * (p[0] - 50.0) + (p[1] - 90.0) * (p[1] - 90.0) + (p[2] - 60.0) * (p[2] - 60.0) < 5.0*5.0)
+            return 0.2;
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;
