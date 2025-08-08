@@ -164,17 +164,24 @@ public:
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;
-        case 3:
-          // TODO Alpha-Synuclein initial condition
-          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
-            return 0.5;
+        case 3: // Alpha-Synuclein initial condition (a cylinder with cuts)
+          if ((p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 20.0) * (p[2] - 20.0) < 30.0*30.0 &&
+              p[0] > 40.0 && p[0] < 65.0 &&
+              p[1] < 95.0 &&
+              p[2] > -1.5 * p[1] + 155.0)
+            return 0.2;
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;
-        case 4:
-          // TODO TDP-43 initial condition
-          if ((p[0] - 0.7) * (p[0] - 0.7) + (p[1] - 0.8) * (p[1] - 0.8) + (p[2] - 0.7) * (p[2] - 0.7) < 0.05*0.05)
-            return 0.5;
+        case 4: // TDP-43 initial condition (a parallelipiped and a cylinder with cuts)
+          if ((p[0] > 45.0 && p[0] < 70.0 &&
+               p[1] > 55.0 && p[1] < 75.0 &&
+               p[2] > 80.0) ||
+              ((p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 20.0) * (p[2] - 20.0) < 15.0*15.0 &&
+               p[0] > 45.0 && p[0] < 60.0 &&
+               p[1] < 95.0 &&
+               p[2] > -1.5 * p[1] + 155.0))
+            return 0.15;
           else
             return 1e-6; // Small value to avoid negative values in the solution
           break;
