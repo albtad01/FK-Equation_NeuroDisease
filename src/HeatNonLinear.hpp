@@ -49,7 +49,10 @@ public:
     {
       Tensor<1, dim> n;                  // Axonal direction versor.
       switch (axonal_field){
-      case 1: // TODO implement real function
+      case 1: // TODO isotropic
+        
+        break;
+      case 2: // TODO implement real function
         for(unsigned int i = 0; i < dim; ++i)
         {
           n[i] = p[i]/p.norm(); // Value might change when mesh is distributed?
@@ -70,10 +73,10 @@ public:
           values[i][i] += d_ext;
         }
         break;
-      case 2:
+      case 3
         // TODO Circular axonal diffusion coefficient
         break;
-      case 3:
+      case 4:
         // TODO Axonal based diffusion coefficient
         break;
       default:
@@ -88,16 +91,19 @@ public:
     {
       Tensor<1, dim> n;
       switch (axonal_field) {
-        case 1: // TODO implement real function
+        case 1: // TODO isotropic
+          
+          break;
+        case 2: // TODO implement real function
           for(unsigned int i = 0; i < dim; ++i) {
             n[i] = p[i]/p.norm();
           }
           return outer_product(n, n)[col][row] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
-        case 2:
+        case 3:
           // TODO Circular axonal diffusion coefficient
           break;
-        case 3:
+        case 4:
           // TODO Axonal based diffusion coefficient
           break;
         default:
@@ -213,7 +219,8 @@ public:
   void
   setup(const int &protein_type_,
         const int &axonal_field_,
-        const int &matter_type_);
+        const int &matter_type_,
+        const Point<dim> &center = Point<dim>());
 
   // Solve the problem.
   void
@@ -289,6 +296,9 @@ protected:
 
   // Brain matter type (0: isotropic, 1: white/gray matter).
   static int matter_type;
+
+  // Center of the brain.
+  static Point<dim> center; // Center of the brain
 
   // Mesh.
   parallel::fullydistributed::Triangulation<dim> mesh;

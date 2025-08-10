@@ -8,11 +8,13 @@ int HeatNonLinear::matter_type;
 void
 HeatNonLinear::setup(const int &protein_type_,
                      const int &axonal_field_,
-                     const int &matter_type_)
+                     const int &matter_type_,
+                     const Point<dim> &center)
 {
   protein_type = protein_type_;
   axonal_field = axonal_field_;
   matter_type = matter_type_;
+  center = center;
 
   // Create the mesh.
   {
