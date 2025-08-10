@@ -48,36 +48,76 @@ public:
                  Tensor<2, dim> &values) const
     {
       Tensor<1, dim> n;                  // Axonal direction versor.
+      values.clear(); // Clear the tensor values.
       switch (axonal_field){
-      case 1: // TODO isotropic
-        
+      case 1: // Isotropic diffusion coefficient
+        for(unsigned int i = 0; i < dim; ++i)
+          values[i][i] = d_ext;
         break;
-      case 2: // TODO implement real function
+      case 2: // Radial axonal diffusion coefficient
         for(unsigned int i = 0; i < dim; ++i)
         {
-          n[i] = p[i]/p.norm(); // Value might change when mesh is distributed?
+          n[i] = (p[i] - center[i]);
         }
-        
+        n /= (n.norm() + 1e-10); // Normalize the vector
+      
         values = outer_product(n, n);
 
         for(unsigned int i = 0; i < dim; ++i)
         {
+          values[i][i] += d_ext;
           for(unsigned int j = 0; j < dim; ++j)
           {
             values[i][j] *= d_axn;
           }
         }
-        
+        break;
+      case 3: // Circular axonal diffusion coefficient
+        n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+        n /= (n.norm() + 1e-10); // Normalize the vector
+
+        values = outer_product(n, n);
         for(unsigned int i = 0; i < dim; ++i)
         {
           values[i][i] += d_ext;
+          for(unsigned int j = 0; j < dim; ++j)
+          {
+            values[i][j] *= d_axn;
+          }
         }
         break;
-      case 3
-        // TODO Circular axonal diffusion coefficient
-        break;
-      case 4:
-        // TODO Axonal based diffusion coefficient
+      case 4: // Axonal based diffusion coefficient
+        if ((p[0] - c[0]) * (p[0] - c[0]) + ((p[1] - c[1]) / 2.0) * ((p[1] - c[1]) / 2.0) + (p[2] - c[2]) * (p[2] - c[2]) < 10.0 * 10.0){
+          n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+          n /= (n.norm() + 1e-10); // Normalize the vector
+
+          values = outer_product(n, n);
+          for(unsigned int i = 0; i < dim; ++i)
+          {
+            values[i][i] += d_ext;
+            for(unsigned int j = 0; j < dim; ++j)
+            {
+              values[i][j] *= d_axn;
+            }
+          }
+        }else{
+          for(unsigned int i = 0; i < dim; ++i)
+          {
+            n[i] = (p[i] - center[i]);
+          }
+          n /= (n.norm() + 1e-10); // Normalize the vector
+        
+          values = outer_product(n, n);
+
+          for(unsigned int i = 0; i < dim; ++i)
+          {
+            values[i][i] += d_ext;
+            for(unsigned int j = 0; j < dim; ++j)
+            {
+              values[i][j] *= d_axn;
+            }
+          }
+        }
         break;
       default:
         AssertThrow(false, ExcMessage("Invalid axonal field type."));
@@ -92,19 +132,35 @@ public:
       Tensor<1, dim> n;
       switch (axonal_field) {
         case 1: // TODO isotropic
-          
+          return d_ext * (col == row ? 1 : 0);
           break;
         case 2: // TODO implement real function
           for(unsigned int i = 0; i < dim; ++i) {
-            n[i] = p[i]/p.norm();
+            n[i] = p[i] - center[i];
           }
-          return outer_product(n, n)[col][row] * d_axn + d_ext * (col == row ? 1 : 0);
+          n /= (n.norm() + 1e-10); // Normalize the vector
+          return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
         case 3:
-          // TODO Circular axonal diffusion coefficient
+          n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+          n /= (n.norm() + 1e-10); // Normalize the vector
+          return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
         case 4:
-          // TODO Axonal based diffusion coefficient
+          if ((p[0] - c[0]) * (p[0] - c[0]) + ((p[1] - c[1]) / 2.0) * ((p[1] - c[1]) / 2.0) + (p[2] - c[2]) * (p[2] - c[2]) < 10.0 * 10.0){
+            n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+            n /= (n.norm() + 1e-10); // Normalize the vector
+
+            return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
+          }else{
+            for(unsigned int i = 0; i < dim; ++i)
+            {
+              n[i] = (p[i] - center[i]);
+            }
+            n /= (n.norm() + 1e-10); // Normalize the vector
+          
+            return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
+          }
           break;
         default:
           AssertThrow(false, ExcMessage("Invalid axonal field type."));
