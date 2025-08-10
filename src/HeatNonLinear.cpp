@@ -4,17 +4,19 @@
 int HeatNonLinear::protein_type;
 int HeatNonLinear::axonal_field;
 int HeatNonLinear::matter_type;
+Point<HeatNonLinear::dim> HeatNonLinear::center;
 
 void
 HeatNonLinear::setup(const int &protein_type_,
                      const int &axonal_field_,
                      const int &matter_type_,
-                     const Point<dim> &center)
+                     const Point<dim> &center_)
 {
   protein_type = protein_type_;
   axonal_field = axonal_field_;
   matter_type = matter_type_;
-  center = center;
+  for(unsigned int i = 0; i < dim; ++i)
+    center[i] = center_[i];
 
   // Create the mesh.
   {

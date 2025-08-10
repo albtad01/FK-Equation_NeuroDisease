@@ -73,7 +73,9 @@ public:
         }
         break;
       case 3: // Circular axonal diffusion coefficient
-        n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+        n[0] = 0.0;
+        n[1] = -(p[2] - center[2]);
+        n[2] =  p[1] - center[1];
         n /= (n.norm() + 1e-10); // Normalize the vector
 
         values = outer_product(n, n);
@@ -87,8 +89,10 @@ public:
         }
         break;
       case 4: // Axonal based diffusion coefficient
-        if ((p[0] - c[0]) * (p[0] - c[0]) + ((p[1] - c[1]) / 2.0) * ((p[1] - c[1]) / 2.0) + (p[2] - c[2]) * (p[2] - c[2]) < 10.0 * 10.0){
-          n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+        if ((p[0] - center[0]) * (p[0] - center[0]) + ((p[1] - center[1]) / 2.0) * ((p[1] - center[1]) / 2.0) + (p[2] - center[2]) * (p[2] - center[2]) < 10.0 * 10.0){
+          n[0] = 0.0;
+          n[1] = -(p[2] - center[2]);
+          n[2] =  p[1] - center[1];
           n /= (n.norm() + 1e-10); // Normalize the vector
 
           values = outer_product(n, n);
@@ -142,13 +146,17 @@ public:
           return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
         case 3:
-          n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+          n[0] = 0.0;
+          n[1] = -(p[2] - center[2]);
+          n[2] =  p[1] - center[1];
           n /= (n.norm() + 1e-10); // Normalize the vector
           return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
         case 4:
-          if ((p[0] - c[0]) * (p[0] - c[0]) + ((p[1] - c[1]) / 2.0) * ((p[1] - c[1]) / 2.0) + (p[2] - c[2]) * (p[2] - c[2]) < 10.0 * 10.0){
-            n = {0.0, -(p[2] - c[2]), p[1] - c[1]};
+          if ((p[0] - center[0]) * (p[0] - center[0]) + ((p[1] - center[1]) / 2.0) * ((p[1] - center[1]) / 2.0) + (p[2] - center[2]) * (p[2] - center[2]) < 10.0 * 10.0){
+            n[0] = 0.0;
+            n[1] = -(p[2] - center[2]);
+            n[2] =  p[1] - center[1];
             n /= (n.norm() + 1e-10); // Normalize the vector
 
             return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
