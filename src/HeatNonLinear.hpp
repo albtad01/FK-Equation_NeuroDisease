@@ -44,7 +44,7 @@ public:
     // TODO DIFFERENCIATE BETWEEN WHITE AND GRAY MATTER WITH DIFFERENT FUNCTIONS
     public:
     virtual void
-    tensor_value(const Point<dim> & p,
+    white_tensor_value(const Point<dim> & p,
                  Tensor<2, dim> &values) const
     {
       Tensor<1, dim> n;                  // Axonal direction versor.
@@ -125,7 +125,7 @@ public:
     }
 
     virtual double
-    value(const Point<dim> & p,
+    white_value(const Point<dim> & p,
           const unsigned int col = 0,
           const unsigned int row = 0) const
     {
@@ -167,11 +167,9 @@ public:
       }
     }
 
-    protected: // TODO see if gray necessary or not
+    protected: 
     const double d_ext = 0.0005;
-    const double d_ext_gray = 0.0005; // May be unnecessary, gray matter just uses d_ext only?
     const double d_axn = 0.001;
-    const double d_axn_gray = 0.001; // May be unnecessary, white matter just uses d_axn in addition?
   };
 
   // Function for the alpha coefficient.
@@ -185,9 +183,8 @@ public:
       return alp;
     }
   
-  protected: // TODO see if gray necessary or not
+  protected:
     const double alp = 1.0;
-    const double alp_gray = 0.5;
   };
 
   // Function for the forcing term.

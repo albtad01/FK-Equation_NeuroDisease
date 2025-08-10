@@ -145,12 +145,22 @@ HeatNonLinear::assemble_system()
       // TODO DECIDE HERE ALPHA BASED ON CELL MATTER TYPE INSTEAD OF QUADRATURE POINT SINCE IT IS CONSTANT
       double alpha_loc = alpha.value();
       // MIGHT BE DONE FOR D AS WELL USING VALUE() INSTEAD OF TENSOR_VALUE() IN A FOR LOOP ON QUADRATURE
-      // if(matter_type) -> if(cell->material_id()) -> alpha/D_loc = alpha/D.white_ or .gray_value()
+      /*
+      if(matter_type){
+        // 0: white matter, 1: gray matter
+        if(cell->material_id()==0){ 
+          D.white_tensor_value(fe_values.quadrature_point(q), D_loc);
+        }
+        else{
+          D.gray_tensor_value(fe_values.quadrature_point(q), D_loc)
+        }
+      }
+      */
       for (unsigned int q = 0; q < n_q; ++q)
         {
           // Evaluate coefficients on this quadrature node.
           Tensor<2, dim> D_loc;
-          D.tensor_value(fe_values.quadrature_point(q), D_loc);
+          D.white_tensor_value(fe_values.quadrature_point(q), D_loc);
 
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
