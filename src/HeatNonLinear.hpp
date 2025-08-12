@@ -19,6 +19,8 @@
 #include <deal.II/grid/grid_tools.h>
 
 #include <deal.II/lac/solver_cg.h>
+#include <deal.II/lac/solver_gmres.h>
+#include <deal.II/lac/solver_minres.h>
 #include <deal.II/lac/trilinos_precondition.h>
 #include <deal.II/lac/trilinos_sparse_matrix.h>
 
@@ -92,7 +94,7 @@ public:
         if ((p[0] - center[0]) * (p[0] - center[0]) + ((p[1] - center[1]) / 2.0) * ((p[1] - center[1]) / 2.0) + (p[2] - center[2]) * (p[2] - center[2]) < 10.0 * 10.0){
           n[0] = 0.0;
           n[1] = -(p[2] - center[2]);
-          n[2] =  p[1] - center[1];
+          n[2] = (p[1] - center[1])/2.0;
           n /= (n.norm() + 1e-10); // Normalize the vector
 
           values = outer_product(n, n);
@@ -128,6 +130,13 @@ public:
       }
     }
 
+    virtual void
+    gray_tensor_value(const Point<dim> & p,
+                 Tensor<2, dim> &values) const
+    {
+      values.clear(); // TODO
+    }
+
     virtual double
     white_value(const Point<dim> & p,
           const unsigned int col = 0,
@@ -135,28 +144,28 @@ public:
     {
       Tensor<1, dim> n;
       switch (axonal_field) {
-        case 1: // TODO isotropic
+        case 1: // Isotropic diffusion coefficient
           return d_ext * (col == row ? 1 : 0);
           break;
-        case 2: // TODO implement real function
+        case 2: // Radial axonal diffusion coefficient
           for(unsigned int i = 0; i < dim; ++i) {
             n[i] = p[i] - center[i];
           }
           n /= (n.norm() + 1e-10); // Normalize the vector
           return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
-        case 3:
+        case 3: // Circular axonal diffusion coefficient
           n[0] = 0.0;
           n[1] = -(p[2] - center[2]);
           n[2] =  p[1] - center[1];
           n /= (n.norm() + 1e-10); // Normalize the vector
           return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
           break;
-        case 4:
+        case 4: // Axonal based diffusion coefficient
           if ((p[0] - center[0]) * (p[0] - center[0]) + ((p[1] - center[1]) / 2.0) * ((p[1] - center[1]) / 2.0) + (p[2] - center[2]) * (p[2] - center[2]) < 10.0 * 10.0){
             n[0] = 0.0;
             n[1] = -(p[2] - center[2]);
-            n[2] =  p[1] - center[1];
+            n[2] =  (p[1] - center[1])/2.0;
             n /= (n.norm() + 1e-10); // Normalize the vector
 
             return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
@@ -175,6 +184,14 @@ public:
       }
     }
 
+    virtual double
+    gray_value(const Point<dim> & p,
+          const unsigned int col = 0,
+          const unsigned int row = 0) const
+    {
+      return 0.0; // TODO
+    }
+
     protected: 
     const double d_ext = 0.0005;
     const double d_axn = 0.001;
@@ -185,10 +202,17 @@ public:
   {
   public:
     virtual double
-    value(const Point<dim> & /*p*/ = Point<dim>(),
-          const unsigned int /*component*/ = 0) const override
+    white_value(const Point<dim> & /*p*/ = Point<dim>(),
+          const unsigned int /*component*/ = 0) const
     {
       return alp;
+    }
+
+    virtual double
+    gray_value(const Point<dim> & /*p*/ = Point<dim>(),
+          const unsigned int /*component*/ = 0) const
+    {
+      return alp / 2.0;
     }
   
   protected:

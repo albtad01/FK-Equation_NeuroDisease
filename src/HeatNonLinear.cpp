@@ -1,5 +1,4 @@
 #include "HeatNonLinear.hpp"
-#include <deal.II/lac/solver_minres.h>
 
 int HeatNonLinear::protein_type;
 int HeatNonLinear::axonal_field;
@@ -144,26 +143,25 @@ HeatNonLinear::assemble_system()
       fe_values.get_function_values(solution_old, solution_old_loc);
       fe_values.get_function_gradients(solution_old, solution_old_gradient_loc);
 
-      // TODO DECIDE HERE ALPHA BASED ON CELL MATTER TYPE INSTEAD OF QUADRATURE POINT SINCE IT IS CONSTANT
-      double alpha_loc = alpha.value();
-      // MIGHT BE DONE FOR D AS WELL USING VALUE() INSTEAD OF TENSOR_VALUE() IN A FOR LOOP ON QUADRATURE
-      /*
-      if(matter_type){
-        // 0: white matter, 1: gray matter
-        if(cell->material_id()==0){ 
-          D.white_tensor_value(fe_values.quadrature_point(q), D_loc);
-        }
-        else{
-          D.gray_tensor_value(fe_values.quadrature_point(q), D_loc)
-        }
+      // Evaluate coefficients on quadrature nodes.
+      Tensor<2, dim> D_loc;
+      double alpha_loc;
+      if(matter_type && cell->material_id()){ // non-isotropic matter case and gray matter cell
+        for (unsigned int q = 0; q < n_q; ++q)
+          {
+            D.gray_tensor_value(fe_values.quadrature_point(q), D_loc);
+          }
+          alpha_loc = alpha.gray_value();
+      }else{ // isotropic matter case and/or white matter cell
+        for (unsigned int q = 0; q < n_q; ++q)
+          {
+            D.white_tensor_value(fe_values.quadrature_point(q), D_loc);
+          }
+          alpha_loc = alpha.white_value();
       }
-      */
+      
       for (unsigned int q = 0; q < n_q; ++q)
         {
-          // Evaluate coefficients on this quadrature node.
-          Tensor<2, dim> D_loc;
-          D.white_tensor_value(fe_values.quadrature_point(q), D_loc);
-
           for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
               for (unsigned int j = 0; j < dofs_per_cell; ++j)
@@ -253,6 +251,7 @@ HeatNonLinear::solve_linear_system() // TODO find best solver and preconditioner
 {
   SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
 
+  //SolverGMRES<TrilinosWrappers::MPI::Vector> solver(solver_control);
   SolverMinRes<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
   TrilinosWrappers::PreconditionSSOR      preconditioner;
