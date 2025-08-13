@@ -283,6 +283,34 @@ public:
       }
     }
   };
+  class WhiteGrayMatter{
+    std::vector<Point<dim>> boundary_cores; // bounday_cores are the boundary centers 
+    for (const auto &cell : mesh.active_cell_iterators())
+      {
+        if (!cell->is_locally_owned())
+          continue;
+        
+        if (cell->at_boundary()){
+          boundary_cores.push_back(cell->center()); 
+        }
+      }
+    for (const auto &cell : mesh.active_cell_iterators())
+      {
+        if (!cell->is_locally_owned())
+          continue;
+            bool is_gray = false;
+            for (const auto &core : boundary_cores)
+            {
+                if (cell->center().distance(core) < 5.0) // TODO: change distance_threshold instead of 5.0
+                {
+                    cell->set_material_id(1); // Set material ID to 1 for gray matter
+                    is_gray = true;
+                    break;
+                }
+            }
+            if (!is_gray) cell->set_material_id(0); // Set material ID to 0 for white matter
+      }
+  }
 
   // Constructor. We provide the final time, time step Delta t and theta method
   // parameter as constructor arguments.
