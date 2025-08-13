@@ -134,7 +134,9 @@ public:
     gray_tensor_value(const Point<dim> & p,
                  Tensor<2, dim> &values) const
     {
-      values.clear(); // TODO
+      values.clear(); 
+      for(unsigned int i = 0; i < dim; ++i)
+          values[i][i] = d_ext;
     }
 
     virtual double
@@ -189,7 +191,7 @@ public:
           const unsigned int col = 0,
           const unsigned int row = 0) const
     {
-      return 0.0; // TODO
+      return d_ext * (col == row ? 1 : 0); 
     }
 
     protected: 
