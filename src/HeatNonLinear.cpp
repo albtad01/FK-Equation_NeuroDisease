@@ -37,32 +37,40 @@ HeatNonLinear::setup(const int &protein_type_,
     pcout << "  Number of elements = " << mesh.n_global_active_cells()
           << std::endl;
 
-    std::vector<Point<dim>> boundary_cores; // bounday_cores are the boundary centers 
-    for (const auto &cell : mesh_serial.active_cell_iterators())
-      {
-        if (!cell->is_locally_owned())
-          continue;
-        
-        if (cell->at_boundary()){
-          boundary_cores.push_back(cell->center()); 
+    if(matter_type){
+      int white_count = 0, gray_count = 0;
+      std::vector<Point<dim>> boundary_cores; // bounday_cores are the boundary centers 
+      for (const auto &cell : mesh_serial.active_cell_iterators())
+        {
+          if (!cell->is_locally_owned())
+            continue;
+          
+          if (cell->at_boundary()){
+            boundary_cores.push_back(cell->center()); 
+          }
         }
-      }
-    for (const auto &cell : mesh.active_cell_iterators())
-      {
-        if (!cell->is_locally_owned())
-          continue;
-            bool is_gray = false;
-            for (const auto &core : boundary_cores)
-            {
-                if (cell->center().distance(core) < 5.0) // TODO: change distance_threshold instead of 5.0
-                {
-                    cell->set_material_id(1); // Set material ID to 1 for gray matter
-                    is_gray = true;
-                    break;
-                }
-            }
-            if (!is_gray) cell->set_material_id(0); // Set material ID to 0 for white matter
-      }
+      for (const auto &cell : mesh.active_cell_iterators())
+        {
+          if (!cell->is_locally_owned())
+            continue;
+              bool is_gray = false;
+              for (const auto &core : boundary_cores)
+              {
+                  if (cell->center().distance(core) < 1.0) // TODO: change distance_threshold instead of 5.0
+                  {
+                      cell->set_material_id(1); // Set material ID to 1 for gray matter
+                      gray_count++;
+                      is_gray = true;
+                      break;
+                  }
+              }
+              if (!is_gray) {cell->set_material_id(0);
+              white_count++;
+              } // Set material ID to 0 for white matter
+        }
+      pcout << "  Number of white matter cells = " << white_count << std::endl;
+      pcout << "  Number of gray matter cells = " << gray_count << std::endl;
+    }
   }
 
   pcout << "-----------------------------------------------" << std::endl;
@@ -306,7 +314,7 @@ HeatNonLinear::solve_newton()
 
   // We apply the boundary conditions to the initial guess (which is stored in
   // solution_owned and solution).
-  { // TODO is this necessary?
+  /*{ // TODO is this necessary?
     IndexSet dirichlet_dofs = DoFTools::extract_boundary_dofs(dof_handler);
     dirichlet_dofs          = dirichlet_dofs & dof_handler.locally_owned_dofs();
 
@@ -320,7 +328,7 @@ HeatNonLinear::solve_newton()
 
     solution_owned.compress(VectorOperation::insert);
     solution = solution_owned;
-  }
+  }*/
 
   while (n_iter < n_max_iters && residual_norm > residual_tolerance)
     {
