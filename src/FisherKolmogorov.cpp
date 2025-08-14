@@ -1,4 +1,4 @@
-#include "HeatNonLinear.hpp"
+#include "DiffusionNonLinear.hpp"
 
 // Main function.
 int
@@ -16,7 +16,7 @@ main(int argc, char *argv[])
   const double theta  = 1.0;
   const Point<3> center(55.0, 80.0, 65.0); // Center of the brain
 
-  HeatNonLinear problem("../mesh/brain.msh", degree, T, deltat, theta);
+  DiffusionNonLinear problem("../mesh/brain.msh", degree, T, deltat, theta);
 
   problem.setup(protein_type, axonal_field, matter_type, center);
   problem.solve();
