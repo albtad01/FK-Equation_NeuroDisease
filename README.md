@@ -27,5 +27,5 @@ $ make
 ```
 The executable will be created into `build`, and can be executed through
 ```bash
-$ ./executable-name
+$ ./Fisher-Kolmogorov ../src/parameters.csv
 ```

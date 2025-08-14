@@ -197,9 +197,9 @@ public:
       return d_ext * (col == row ? 1 : 0); 
     }
 
-    protected: 
-    const double d_ext;
+    protected:
     const double d_axn;
+    const double d_ext;
     const int axonal_field; // Axonal field type (1: radial, 2: circular, 3: axonal)   
   };
 
@@ -246,8 +246,9 @@ public:
   {
   public:
 
-    FunctionU0(const double &protein_type_)
+    FunctionU0(const int &protein_type_)
       : protein_type(protein_type_) {}
+    
     virtual double
     value(const Point<dim> & p,
           const unsigned int /*component*/ = 0) const override
@@ -305,25 +306,25 @@ public:
                 const double       &deltat_,
                 const double       &theta_,
                 const int          &matter_type_,
-                const double       &d_axn_,
-                const double       &d_ext_,
-                const double       &alp_,
                 const int          &protein_type_,
                 const int          &axonal_field_,
+                const double       &d_axn_,
+                const double       &d_ext_,
+                const double       &alp_
               )
     : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , pcout(std::cout, mpi_rank == 0)
+    , D(d_axn_, d_ext_, axonal_field_)
+    , alpha(alp_)
+    , u_0(protein_type_)
     , T(T_)
     , mesh_file_name(mesh_file_name_)
     , r(r_)
     , deltat(deltat_)
     , theta(theta_)
-    , mesh(MPI_COMM_WORLD)
-    , D(d_axn_, d_ext_, axonal_field_)
-    , alpha(alp_)
-    , u_0(protein_type_)
     , matter_type(matter_type_)
+    , mesh(MPI_COMM_WORLD)
   {}
 
   // Initialization.
