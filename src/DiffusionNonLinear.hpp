@@ -43,8 +43,11 @@ public:
   // Function for the Diffusion tensor coefficient.
   class FunctionD : public Function<dim>
   {
-    // TODO DIFFERENCIATE BETWEEN WHITE AND GRAY MATTER WITH DIFFERENT FUNCTIONS
     public:
+
+    FunctionD(const double &d_axn_, const double &d_ext_, const int &axonal_field_)
+      : d_axn(d_axn_), d_ext(d_ext_), axonal_field(axonal_field_) {}
+
     virtual void
     white_tensor_value(const Point<dim> & p,
                  Tensor<2, dim> &values) const
@@ -195,14 +198,19 @@ public:
     }
 
     protected: 
-    const double d_ext = 0.0005;
-    const double d_axn = 0.001;
+    const double d_ext;
+    const double d_axn;
+    const int axonal_field; // Axonal field type (1: radial, 2: circular, 3: axonal)   
   };
 
   // Function for the alpha coefficient.
   class FunctionAlpha : public Function<dim>
   {
   public:
+
+    FunctionAlpha(const double &alp_)
+      : alp(alp_) {}
+
     virtual double
     white_value(const Point<dim> & /*p*/ = Point<dim>(),
           const unsigned int /*component*/ = 0) const
@@ -218,7 +226,7 @@ public:
     }
   
   protected:
-    const double alp = 1.0;
+    const double alp;
   };
 
   // Function for the forcing term.
@@ -237,6 +245,9 @@ public:
   class FunctionU0 : public Function<dim>
   {
   public:
+
+    FunctionU0(const double &protein_type_)
+      : protein_type(protein_type_) {}
     virtual double
     value(const Point<dim> & p,
           const unsigned int /*component*/ = 0) const override
@@ -282,6 +293,8 @@ public:
           AssertThrow(false, ExcMessage("Invalid protein type."));
       }
     }
+    private:
+    const int protein_type;
   };
   
   // Constructor. We provide the final time, time step Delta t and theta method
@@ -290,7 +303,14 @@ public:
                 const unsigned int &r_,
                 const double       &T_,
                 const double       &deltat_,
-                const double       &theta_)
+                const double       &theta_,
+                const int          &matter_type_,
+                const double       &d_axn_,
+                const double       &d_ext_,
+                const double       &alp_,
+                const int          &protein_type_,
+                const int          &axonal_field_,
+              )
     : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , pcout(std::cout, mpi_rank == 0)
@@ -300,14 +320,15 @@ public:
     , deltat(deltat_)
     , theta(theta_)
     , mesh(MPI_COMM_WORLD)
+    , D(d_axn_, d_ext_, axonal_field_)
+    , alpha(alp_)
+    , u_0(protein_type_)
+    , matter_type(matter_type_)
   {}
 
   // Initialization.
   void
-  setup(const int &protein_type_,
-        const int &axonal_field_,
-        const int &matter_type_,
-        const Point<dim> &center = Point<dim>());
+  setup(const Point<dim> &center = Point<dim>());
 
   // Solve the problem.
   void
@@ -375,14 +396,8 @@ protected:
   // Theta parameter of the theta method.
   const double theta;
 
-  // Protein type (1: amyloid-beta, 2: tau, 3: alpha-synuclein, 4: TDP-43).
-  static int protein_type;
-
-  // Axonal field type (1: radial, 2: circular, 3: axonal).
-  static int axonal_field;
-
   // Brain matter type (0: isotropic, 1: white/gray matter).
-  static int matter_type;
+  const int matter_type;
 
   // Center of the brain.
   static Point<dim> center; // Center of the brain

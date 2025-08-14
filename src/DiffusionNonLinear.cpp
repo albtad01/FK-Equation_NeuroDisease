@@ -1,19 +1,10 @@
 #include "DiffusionNonLinear.hpp"
 
-int DiffusionNonLinear::protein_type;
-int DiffusionNonLinear::axonal_field;
-int DiffusionNonLinear::matter_type;
 Point<DiffusionNonLinear::dim> DiffusionNonLinear::center;
 
 void
-DiffusionNonLinear::setup(const int &protein_type_,
-                     const int &axonal_field_,
-                     const int &matter_type_,
-                     const Point<dim> &center_)
+DiffusionNonLinear::setup(const Point<dim> &center_)
 {
-  protein_type = protein_type_;
-  axonal_field = axonal_field_;
-  matter_type = matter_type_;
   for(unsigned int i = 0; i < dim; ++i)
     center[i] = center_[i];
 

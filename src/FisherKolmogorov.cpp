@@ -23,3 +23,20 @@ main(int argc, char *argv[])
 
   return 0;
 }
+
+/*
+T
+deltat
+theta
+degree
+
+protein_type
+axonal_field
+matter_type
+d_axn
+d_ext
+alpha
+
+mesh_file_name
+output_dir
+*/
