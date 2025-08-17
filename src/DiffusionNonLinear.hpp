@@ -30,6 +30,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 using namespace dealii;
 
@@ -310,7 +311,8 @@ public:
                 const int          &axonal_field_,
                 const double       &d_axn_,
                 const double       &d_ext_,
-                const double       &alp_
+                const double       &alp_,
+                const std::string  &output_dir_
               )
     : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
@@ -320,6 +322,7 @@ public:
     , u_0(protein_type_)
     , T(T_)
     , mesh_file_name(mesh_file_name_)
+    , output_dir(output_dir_)
     , r(r_)
     , deltat(deltat_)
     , theta(theta_)
@@ -387,6 +390,9 @@ protected:
 
   // Mesh file name.
   const std::string mesh_file_name;
+
+  // Name of the subdir for the output
+  const std::string  &output_dir;
 
   // Polynomial degree.
   const unsigned int r;

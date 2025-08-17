@@ -7,28 +7,40 @@ main(int argc, char *argv[])
 {
   Utilities::MPI::MPI_InitFinalize mpi_init(argc, argv);
 
+  if (argc < 2)
+    {
+        if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+          std::cout << "Missing parameters file!" << std::endl;
+        return 0;
+    }
+  
   const Point<3> center(55.0, 80.0, 65.0); // Center of the brain
 
-  // TODO: implement multiple problems
-  // (maybe read all params at once returning a vector, then in a for loop call problem(p[i]...))
-  Parameters p = read_params_from_csv(argv[1]);
+  std::vector<Parameters> problems = read_params_from_csv(argv[1]);
   
-  DiffusionNonLinear problem(
-    p.mesh_file_name,
-    p.degree,
-    p.T,
-    p.deltat,
-    p.theta,
-    p.matter_type,  // 1: Isotropic, 2: White/Gray
-    p.protein_type, // 1: Amyloid-beta, 2: Tau, 3: Alpha-synuclein, 4: TDP-43
-    p.axonal_field, // 1: Isotropic, 2: radial, 3: circular, 4: axonal
-    p.d_axn,
-    p.d_ext,
-    p.alpha
-  ); // TODO: implement output_dir, to be passed to the output function
+  for (size_t i = 0; i < problems.size(); i++)
+    {
+      if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+        std::cout << "Running problem " << i+1 << std::endl;
+  
+      DiffusionNonLinear problem(
+        problems[i].mesh_file_name,
+        problems[i].degree,
+        problems[i].T,
+        problems[i].deltat,
+        problems[i].theta,
+        problems[i].matter_type,  // 1: Isotropic, 2: White/Gray
+        problems[i].protein_type, // 1: Amyloid-beta, 2: Tau, 3: Alpha-synuclein, 4: TDP-43
+        problems[i].axonal_field, // 1: Isotropic, 2: radial, 3: circular, 4: axonal
+        problems[i].d_axn,
+        problems[i].d_ext,
+        problems[i].alpha,
+        problems[i].output_dir
+      );
 
-  problem.setup(center);
-  problem.solve();
+      problem.setup(center);
+      problem.solve();
+    }
 
   return 0;
 }
