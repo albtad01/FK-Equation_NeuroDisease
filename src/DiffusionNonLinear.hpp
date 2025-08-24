@@ -31,6 +31,7 @@
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <cmath>
 
 using namespace dealii;
 
@@ -44,188 +45,184 @@ public:
   // Function for the Diffusion tensor coefficient.
   class FunctionD : public Function<dim>
   {
-    public:
-
+  public:
     FunctionD(const double &d_axn_, const double &d_ext_, const int &axonal_field_)
       : d_axn(d_axn_), d_ext(d_ext_), axonal_field(axonal_field_) {}
 
     virtual void
-    white_tensor_value(const Point<dim> & p,
-                 Tensor<2, dim> &values) const
+    white_tensor_value(const Point<dim> &p, Tensor<2, dim> &values) const
     {
-      Tensor<1, dim> n;                  // Axonal direction versor.
-      values.clear(); // Clear the tensor values.
-      switch (axonal_field){
-      case 1: // Isotropic diffusion coefficient
-        for(unsigned int i = 0; i < dim; ++i)
-          values[i][i] = d_ext;
-        break;
-      case 2: // Radial axonal diffusion coefficient
-        for(unsigned int i = 0; i < dim; ++i)
+      Tensor<1, dim> n;
+      values.clear();
+
+      switch (axonal_field)
         {
-          n[i] = (p[i] - center[i]);
-        }
-        n /= (n.norm() + 1e-10); // Normalize the vector
-      
-        values = outer_product(n, n);
+          case 1: // Isotropic
+            for (unsigned int i = 0; i < dim; ++i)
+              values[i][i] = d_ext;
+            break;
 
-        for(unsigned int i = 0; i < dim; ++i)
-        {
-          values[i][i] += d_ext;
-          for(unsigned int j = 0; j < dim; ++j)
+          case 2: // Radial
           {
-            values[i][j] *= d_axn;
-          }
-        }
-        break;
-      case 3: // Circular axonal diffusion coefficient
-        n[0] = 0.0;
-        n[1] = -(p[2] - center[2]);
-        n[2] =  p[1] - center[1];
-        n /= (n.norm() + 1e-10); // Normalize the vector
+            for (unsigned int i = 0; i < dim; ++i)
+              n[i] = (p[i] - DiffusionNonLinear::center[i]);
+            n /= (n.norm() + 1e-10);
 
-        values = outer_product(n, n);
-        for(unsigned int i = 0; i < dim; ++i)
-        {
-          values[i][i] += d_ext;
-          for(unsigned int j = 0; j < dim; ++j)
-          {
-            values[i][j] *= d_axn;
+            values = outer_product(n, n);
+            for (unsigned int i = 0; i < dim; ++i)
+              for (unsigned int j = 0; j < dim; ++j)
+                values[i][j] *= d_axn;
+            for (unsigned int i = 0; i < dim; ++i)
+              values[i][i] += d_ext;
           }
-        }
-        break;
-      case 4: // Axonal based diffusion coefficient
-        if ((p[0] - center[0]) * (p[0] - center[0]) + ((p[1] - center[1]) / 2.0) * ((p[1] - center[1]) / 2.0) + (p[2] - center[2]) * (p[2] - center[2]) < 10.0 * 10.0){
-          n[0] = 0.0;
-          n[1] = -(p[2] - center[2]);
-          n[2] = (p[1] - center[1])/2.0;
-          n /= (n.norm() + 1e-10); // Normalize the vector
+          break;
 
-          values = outer_product(n, n);
-          for(unsigned int i = 0; i < dim; ++i)
+          case 3: // Circular
           {
-            values[i][i] += d_ext;
-            for(unsigned int j = 0; j < dim; ++j)
-            {
-              values[i][j] *= d_axn;
-            }
-          }
-        }else{
-          for(unsigned int i = 0; i < dim; ++i)
-          {
-            n[i] = (p[i] - center[i]);
-          }
-          n /= (n.norm() + 1e-10); // Normalize the vector
-        
-          values = outer_product(n, n);
+            n[0] = 0.0;
+            n[1] = -(p[2] - DiffusionNonLinear::center[2]);
+            n[2] =  (p[1] - DiffusionNonLinear::center[1]);
+            n /= (n.norm() + 1e-10);
 
-          for(unsigned int i = 0; i < dim; ++i)
-          {
-            values[i][i] += d_ext;
-            for(unsigned int j = 0; j < dim; ++j)
-            {
-              values[i][j] *= d_axn;
-            }
+            values = outer_product(n, n);
+            for (unsigned int i = 0; i < dim; ++i)
+              for (unsigned int j = 0; j < dim; ++j)
+                values[i][j] *= d_axn;
+            for (unsigned int i = 0; i < dim; ++i)
+              values[i][i] += d_ext;
           }
+          break;
+
+          case 4: // Axonal-based
+          {
+            const bool inner =
+              (p[0] - DiffusionNonLinear::center[0]) * (p[0] - DiffusionNonLinear::center[0]) +
+              ((p[1] - DiffusionNonLinear::center[1]) / 2.0) * ((p[1] - DiffusionNonLinear::center[1]) / 2.0) +
+              (p[2] - DiffusionNonLinear::center[2]) * (p[2] - DiffusionNonLinear::center[2]) < 10.0 * 10.0;
+
+            if (inner)
+              {
+                n[0] = 0.0;
+                n[1] = -(p[2] - DiffusionNonLinear::center[2]);
+                n[2] =  (p[1] - DiffusionNonLinear::center[1]) / 2.0;
+              }
+            else
+              {
+                for (unsigned int i = 0; i < dim; ++i)
+                  n[i] = (p[i] - DiffusionNonLinear::center[i]);
+              }
+            n /= (n.norm() + 1e-10);
+
+            values = outer_product(n, n);
+            for (unsigned int i = 0; i < dim; ++i)
+              for (unsigned int j = 0; j < dim; ++j)
+                values[i][j] *= d_axn;
+            for (unsigned int i = 0; i < dim; ++i)
+              values[i][i] += d_ext;
+          }
+          break;
+
+          default:
+            AssertThrow(false, ExcMessage("Invalid axonal field type."));
+            break;
         }
-        break;
-      default:
-        AssertThrow(false, ExcMessage("Invalid axonal field type."));
-      }
     }
 
     virtual void
-    gray_tensor_value(const Point<dim> & /*p*/,
-                 Tensor<2, dim> &values) const
+    gray_tensor_value(const Point<dim> & /*p*/, Tensor<2, dim> &values) const
     {
-      values.clear(); 
-      for(unsigned int i = 0; i < dim; ++i)
-          values[i][i] = d_ext;
+      values.clear();
+      for (unsigned int i = 0; i < dim; ++i)
+        values[i][i] = d_ext;
     }
 
     virtual double
-    white_value(const Point<dim> & p,
-          const unsigned int col = 0,
-          const unsigned int row = 0) const
+    white_value(const Point<dim> &p,
+                const unsigned int col = 0,
+                const unsigned int row = 0) const
     {
       Tensor<1, dim> n;
-      switch (axonal_field) {
-        case 1: // Isotropic diffusion coefficient
-          return d_ext * (col == row ? 1 : 0);
-          break;
-        case 2: // Radial axonal diffusion coefficient
-          for(unsigned int i = 0; i < dim; ++i) {
-            n[i] = p[i] - center[i];
-          }
-          n /= (n.norm() + 1e-10); // Normalize the vector
-          return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
-          break;
-        case 3: // Circular axonal diffusion coefficient
-          n[0] = 0.0;
-          n[1] = -(p[2] - center[2]);
-          n[2] =  p[1] - center[1];
-          n /= (n.norm() + 1e-10); // Normalize the vector
-          return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
-          break;
-        case 4: // Axonal based diffusion coefficient
-          if ((p[0] - center[0]) * (p[0] - center[0]) + ((p[1] - center[1]) / 2.0) * ((p[1] - center[1]) / 2.0) + (p[2] - center[2]) * (p[2] - center[2]) < 10.0 * 10.0){
-            n[0] = 0.0;
-            n[1] = -(p[2] - center[2]);
-            n[2] =  (p[1] - center[1])/2.0;
-            n /= (n.norm() + 1e-10); // Normalize the vector
 
-            return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
-          }else{
-            for(unsigned int i = 0; i < dim; ++i)
-            {
-              n[i] = (p[i] - center[i]);
-            }
-            n /= (n.norm() + 1e-10); // Normalize the vector
-          
-            return outer_product(n, n)[row][col] * d_axn + d_ext * (col == row ? 1 : 0);
+      switch (axonal_field)
+        {
+          case 1: // isotropic
+            return (col == row) ? d_ext : 0.0;
+
+          case 2: // radial
+            for (unsigned int i = 0; i < dim; ++i)
+              n[i] = p[i] - DiffusionNonLinear::center[i];
+            n /= (n.norm() + 1e-10);
+            return d_axn * n[row] * n[col] + ((col == row) ? d_ext : 0.0);
+
+          case 3: // circular
+            n[0] = 0.0;
+            n[1] = -(p[2] - DiffusionNonLinear::center[2]);
+            n[2] =  (p[1] - DiffusionNonLinear::center[1]);
+            n /= (n.norm() + 1e-10);
+            return d_axn * n[row] * n[col] + ((col == row) ? d_ext : 0.0);
+
+          case 4: // axonal-based
+          {
+            const bool inner =
+              (p[0] - DiffusionNonLinear::center[0]) * (p[0] - DiffusionNonLinear::center[0]) +
+              ((p[1] - DiffusionNonLinear::center[1]) / 2.0) * ((p[1] - DiffusionNonLinear::center[1]) / 2.0) +
+              (p[2] - DiffusionNonLinear::center[2]) * (p[2] - DiffusionNonLinear::center[2]) < 10.0 * 10.0;
+
+            if (inner)
+              {
+                n[0] = 0.0;
+                n[1] = -(p[2] - DiffusionNonLinear::center[2]);
+                n[2] =  (p[1] - DiffusionNonLinear::center[1]) / 2.0;
+              }
+            else
+              {
+                for (unsigned int i = 0; i < dim; ++i)
+                  n[i] = p[i] - DiffusionNonLinear::center[i];
+              }
+            n /= (n.norm() + 1e-10);
+            return d_axn * n[row] * n[col] + ((col == row) ? d_ext : 0.0);
           }
-          break;
-        default:
-          AssertThrow(false, ExcMessage("Invalid axonal field type."));
-      }
+
+          default:
+            AssertThrow(false, ExcMessage("Invalid axonal field type."));
+            return 0.0; // quiet compiler
+        }
     }
 
     virtual double
     gray_value(const Point<dim> & /*p*/,
-          const unsigned int col = 0,
-          const unsigned int row = 0) const
+               const unsigned int col = 0,
+               const unsigned int row = 0) const
     {
-      return d_ext * (col == row ? 1 : 0); 
+      return d_ext * (col == row ? 1 : 0);
     }
 
-    protected:
+  private:
     const double d_axn;
     const double d_ext;
-    const int axonal_field; // Axonal field type (1: radial, 2: circular, 3: axonal)   
-  };
+    const int    axonal_field; // (1: isotropic, 2: radial, 3: circular, 4: axonal-based)
+  }; // <-- end class FunctionD
 
   // Function for the alpha coefficient.
   class FunctionAlpha : public Function<dim>
   {
   public:
-
-    FunctionAlpha(const double &alp_)
-      : alp(alp_) {}
+    FunctionAlpha(const double &alp_) : alp(alp_) {}
 
     virtual double
     white_value(const Point<dim> & /*p*/ = Point<dim>(),
-          const unsigned int /*component*/ = 0) const
+                const unsigned int /*component*/ = 0) const
     {
       return alp;
     }
 
     virtual double
     gray_value(const Point<dim> & /*p*/ = Point<dim>(),
-          const unsigned int /*component*/ = 0) const
+               const unsigned int /*component*/ = 0) const
     {
       return alp / 2.0;
     }
-  
+
   protected:
     const double alp;
   };
@@ -246,80 +243,81 @@ public:
   class FunctionU0 : public Function<dim>
   {
   public:
+    FunctionU0(const int &protein_type_) : protein_type(protein_type_) {}
 
-    FunctionU0(const int &protein_type_)
-      : protein_type(protein_type_) {}
-    
     virtual double
-    value(const Point<dim> & p,
-          const unsigned int /*component*/ = 0) const override
+    value(const Point<dim> &p, const unsigned int /*component*/ = 0) const override
     {
-      switch (protein_type) {
-        case 1:{ // Amyloid-beta initial condition (two spheres and a paraboloid)
-          double z = -8.0/605.0 * p[1] * p[1] + 2.0 * p[1] + 25.62; // Get point of the parabola
-          if ((p[0] - 50.0) * (p[0] - 50.0) + (p[1] - 40.0) * (p[1] - 40.0) + (p[2] - 50.0) * (p[2] - 50.0) < 20.0*20.0 ||
-              ((p[0] - 50.0) * (p[0] - 50.0) + (p[2] - z) * (p[2] - z) < 30.0*30.0 &&
-              (p[0] - 60.0) * (p[0] - 60.0) + (p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 110.0) * (p[2] - 110.0) > 20.0*20.0))
-            return 0.1;
-          else
-            return 1e-6; // Small value to avoid negative values in the solution
-          break;}
-        case 2: // Tau initial condition (a sphere)
-          if ((p[0] - 50.0) * (p[0] - 50.0) + (p[1] - 90.0) * (p[1] - 90.0) + (p[2] - 60.0) * (p[2] - 60.0) < 5.0*5.0)
-            return 0.2;
-          else
-            return 1e-6; // Small value to avoid negative values in the solution
-          break;
-        case 3: // Alpha-Synuclein initial condition (a cylinder with cuts)
-          if ((p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 20.0) * (p[2] - 20.0) < 30.0*30.0 &&
-              p[0] > 40.0 && p[0] < 65.0 &&
-              p[1] < 95.0 &&
-              p[2] > -1.5 * p[1] + 155.0)
-            return 0.2;
-          else
-            return 1e-6; // Small value to avoid negative values in the solution
-          break;
-        case 4: // TDP-43 initial condition (a parallelipiped and a cylinder with cuts)
-          if ((p[0] > 45.0 && p[0] < 70.0 &&
-               p[1] > 55.0 && p[1] < 75.0 &&
-               p[2] > 80.0) ||
-              ((p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 20.0) * (p[2] - 20.0) < 15.0*15.0 &&
-               p[0] > 45.0 && p[0] < 60.0 &&
-               p[1] < 95.0 &&
-               p[2] > -1.5 * p[1] + 155.0))
-            return 0.15;
-          else
-            return 1e-6; // Small value to avoid negative values in the solution
-          break;
-        default:
-          AssertThrow(false, ExcMessage("Invalid protein type."));
-      }
+      switch (protein_type)
+        {
+          case 1: // Amyloid-beta
+          {
+            double z = -8.0 / 605.0 * p[1] * p[1] + 2.0 * p[1] + 25.62;
+            if ((p[0] - 50.0) * (p[0] - 50.0) + (p[1] - 40.0) * (p[1] - 40.0) + (p[2] - 50.0) * (p[2] - 50.0) < 20.0 * 20.0 ||
+                (((p[0] - 50.0) * (p[0] - 50.0) + (p[2] - z) * (p[2] - z) < 30.0 * 30.0) &&
+                 ((p[0] - 60.0) * (p[0] - 60.0) + (p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 110.0) * (p[2] - 110.0) > 20.0 * 20.0)))
+              return 0.1;
+            else
+              return 1e-6;
+          }
+
+          case 2: // Tau
+            if ((p[0] - 50.0) * (p[0] - 50.0) + (p[1] - 90.0) * (p[1] - 90.0) + (p[2] - 60.0) * (p[2] - 60.0) < 5.0 * 5.0)
+              return 0.2;
+            else
+              return 1e-6;
+
+          case 3: // Alpha-Synuclein
+            if ((p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 20.0) * (p[2] - 20.0) < 30.0 * 30.0 &&
+                p[0] > 40.0 && p[0] < 65.0 &&
+                p[1] < 95.0 &&
+                p[2] > -1.5 * p[1] + 155.0)
+              return 0.2;
+            else
+              return 1e-6;
+
+          case 4: // TDP-43
+            if ((p[0] > 45.0 && p[0] < 70.0 &&
+                 p[1] > 55.0 && p[1] < 75.0 &&
+                 p[2] > 80.0) ||
+                (((p[1] - 95.0) * (p[1] - 95.0) + (p[2] - 20.0) * (p[2] - 20.0) < 15.0 * 15.0) &&
+                 p[0] > 45.0 && p[0] < 60.0 &&
+                 p[1] < 95.0 &&
+                 p[2] > -1.5 * p[1] + 155.0))
+              return 0.15;
+            else
+              return 1e-6;
+
+          default:
+            AssertThrow(false, ExcMessage("Invalid protein type."));
+            return 0.0;
+        }
     }
-    private:
+
+  private:
     const int protein_type;
   };
-  
-  // Constructor. We provide the final time, time step Delta t and theta method
-  // parameter as constructor arguments.
-  DiffusionNonLinear(const std::string  &mesh_file_name_,
-                const unsigned int &r_,
-                const double       &T_,
-                const double       &deltat_,
-                const double       &theta_,
-                const int          &matter_type_,
-                const int          &protein_type_,
-                const int          &axonal_field_,
-                const double       &d_axn_,
-                const double       &d_ext_,
-                const double       &alp_,
-                const std::string  &output_dir_
-              )
+
+  // Constructor
+  DiffusionNonLinear(const std::string &mesh_file_name_,
+                     const unsigned int &r_,
+                     const double &T_,
+                     const double &deltat_,
+                     const double &theta_,
+                     const int &matter_type_,
+                     const int &protein_type_,
+                     const int &axonal_field_,
+                     const double &d_axn_,
+                     const double &d_ext_,
+                     const double &alp_,
+                     const std::string &output_dir_)
     : mpi_size(Utilities::MPI::n_mpi_processes(MPI_COMM_WORLD))
     , mpi_rank(Utilities::MPI::this_mpi_process(MPI_COMM_WORLD))
     , pcout(std::cout, mpi_rank == 0)
     , D(d_axn_, d_ext_, axonal_field_)
     , alpha(alp_)
     , u_0(protein_type_)
+    , time(0.0)
     , T(T_)
     , mesh_file_name(mesh_file_name_)
     , output_dir(output_dir_)
@@ -331,119 +329,65 @@ public:
   {}
 
   // Initialization.
-  void
-  setup(const Point<dim> &center = Point<dim>());
+  void setup(const Point<dim> &center_ = Point<dim>());
 
   // Solve the problem.
-  void
-  solve();
+  void solve();
 
 protected:
   // Assemble the tangent problem.
-  void
-  assemble_system();
+  void assemble_system();
 
   // Solve the linear system associated to the tangent problem.
-  void
-  solve_linear_system();
+  void solve_linear_system();
 
   // Solve the problem for one time step using Newton's method.
-  void
-  solve_newton();
+  void solve_newton();
 
   // Output.
-  void
-  output(const unsigned int &time_step) const;
+  void output(const unsigned int &time_step) const;
 
   // MPI parallel. /////////////////////////////////////////////////////////////
-
-  // Number of MPI processes.
   const unsigned int mpi_size;
-
-  // This MPI process.
   const unsigned int mpi_rank;
-
-  // Parallel output stream.
   ConditionalOStream pcout;
 
   // Problem definition. ///////////////////////////////////////////////////////
+  FunctionD      D;
+  FunctionAlpha  alpha;
+  ForcingTerm    forcing_term;
+  FunctionU0     u_0;
 
-  // mu_0 coefficient.
-  FunctionD D;
-
-  // mu_1 coefficient.
-  FunctionAlpha alpha;
-
-  // Forcing term.
-  ForcingTerm forcing_term;
-
-  // Initial conditions.
-  FunctionU0 u_0;
-
-  // Current time.
-  double time;
-
-  // Final time.
+  // Time
+  double       time;
   const double T;
 
   // Discretization. ///////////////////////////////////////////////////////////
-
-  // Mesh file name.
   const std::string mesh_file_name;
-
-  // Name of the subdir for the output
-  const std::string  &output_dir;
-
-  // Polynomial degree.
+  const std::string output_dir; // (oggetto, non riferimento)
   const unsigned int r;
-
-  // Time step.
   const double deltat;
-
-  // Theta parameter of the theta method.
   const double theta;
-
-  // Brain matter type (0: isotropic, 1: white/gray matter).
-  const int matter_type;
+  const int    matter_type;
 
   // Center of the brain.
-  static Point<dim> center; // Center of the brain
+  static Point<dim> center;
 
-  // Mesh.
+  // Mesh and FE
   parallel::fullydistributed::Triangulation<dim> mesh;
+  std::unique_ptr<FiniteElement<dim>>            fe;
+  std::unique_ptr<Quadrature<dim>>               quadrature;
+  DoFHandler<dim>                                dof_handler;
 
-  // Finite element space.
-  std::unique_ptr<FiniteElement<dim>> fe;
-
-  // Quadrature formula.
-  std::unique_ptr<Quadrature<dim>> quadrature;
-
-  // DoF handler.
-  DoFHandler<dim> dof_handler;
-
-  // DoFs owned by current process.
   IndexSet locally_owned_dofs;
-
-  // DoFs relevant to the current process (including ghost DoFs).
   IndexSet locally_relevant_dofs;
 
-  // Jacobian matrix.
-  TrilinosWrappers::SparseMatrix jacobian_matrix;
-
-  // Residual vector.
-  TrilinosWrappers::MPI::Vector residual_vector;
-
-  // Increment of the solution between Newton iterations.
-  TrilinosWrappers::MPI::Vector delta_owned;
-
-  // System solution (without ghost elements).
-  TrilinosWrappers::MPI::Vector solution_owned;
-
-  // System solution (including ghost elements).
-  TrilinosWrappers::MPI::Vector solution;
-
-  // System solution at previous time step.
-  TrilinosWrappers::MPI::Vector solution_old;
+  TrilinosWrappers::SparseMatrix  jacobian_matrix;
+  TrilinosWrappers::MPI::Vector   residual_vector;
+  TrilinosWrappers::MPI::Vector   delta_owned;
+  TrilinosWrappers::MPI::Vector   solution_owned;
+  TrilinosWrappers::MPI::Vector   solution;
+  TrilinosWrappers::MPI::Vector   solution_old;
 };
 
 #endif
