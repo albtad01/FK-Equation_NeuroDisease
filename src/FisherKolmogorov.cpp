@@ -29,7 +29,7 @@ main(int argc, char *argv[])
         problems[i].T,
         problems[i].deltat,
         problems[i].theta,
-        problems[i].matter_type,  // 1: Isotropic, 2: White/Gray
+        problems[i].matter_type,  // 0: Isotropic, 1: White/Gray
         problems[i].protein_type, // 1: Amyloid-beta, 2: Tau, 3: Alpha-synuclein, 4: TDP-43
         problems[i].axonal_field, // 1: Isotropic, 2: radial, 3: circular, 4: axonal
         problems[i].d_axn,
