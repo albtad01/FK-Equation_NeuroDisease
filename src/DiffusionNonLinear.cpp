@@ -49,7 +49,7 @@ DiffusionNonLinear::setup(const Point<dim> &center_)
               bool is_gray = false;
               for (const auto &core : boundary_cores)
               {
-                  if (cell->center().distance(core) < 1.0) // TODO: change distance_threshold instead of 5.0
+                  if (cell->center().distance(core) < 3.0) // TODO: change distance_threshold instead of 5.0
                   {
                       cell->set_material_id(1); // Set material ID to 1 for gray matter
                       gray_count++;
@@ -170,75 +170,74 @@ DiffusionNonLinear::assemble_system()
       fe_values.get_function_values(solution_old, solution_old_loc);
       fe_values.get_function_gradients(solution_old, solution_old_gradient_loc);
 
-      // Evaluate coefficients on quadrature nodes.
-      Tensor<2, dim> D_loc;
-      double alpha_loc;
-      if(matter_type && cell->material_id()){ // non-isotropic matter case and gray matter cell
+        // Valuta D in ogni punto di quadratura (dipende da x e da n(x)!)
+        std::vector<Tensor<2, dim>> D_q(n_q);
+        double alpha_loc;
+
+        if (matter_type && cell->material_id())  // cella di materia grigia
+          {
+            constexpr double gray_diff_scale = 0.5; // <-- fattore <1: più piccolo = più lento
+            for (unsigned int q = 0; q < n_q; ++q)
+              {
+                D.gray_tensor_value(fe_values.quadrature_point(q), D_q[q]);
+                D_q[q] *= gray_diff_scale; // <-- scala D in gray
+              }
+            alpha_loc = alpha.gray_value();
+          }
+        else // materia bianca (o caso isotropo globale)
+          {
+            for (unsigned int q = 0; q < n_q; ++q)
+              D.white_tensor_value(fe_values.quadrature_point(q), D_q[q]);
+            alpha_loc = alpha.white_value();
+          }
         for (unsigned int q = 0; q < n_q; ++q)
           {
-            D.gray_tensor_value(fe_values.quadrature_point(q), D_loc);
+            for (unsigned int i = 0; i < dofs_per_cell; ++i)
+              {
+                for (unsigned int j = 0; j < dofs_per_cell; ++j)
+                  {
+                    // Mass matrix.
+                    cell_matrix(i, j) += fe_values.shape_value(i, q) *
+                                        fe_values.shape_value(j, q) / deltat *
+                                        fe_values.JxW(q);
+
+                    // Termine diffusivo con D valutato nel punto di quadratura q
+                    cell_matrix(i, j) += theta * fe_values.shape_grad(i, q) *
+                                        (D_q[q] * fe_values.shape_grad(j, q)) *
+                                        fe_values.JxW(q);
+
+                    // Termine non lineare di reazione (derivata)
+                    cell_matrix(i, j) += theta * alpha_loc *
+                                        (2.0 * solution_loc[q] - 1.0) *
+                                        fe_values.shape_value(i, q) *
+                                        fe_values.shape_value(j, q) *
+                                        fe_values.JxW(q);
+                  }
+
+                // Residuo (con segno cambiato): derivata temporale
+                cell_residual(i) -= (solution_loc[q] - solution_old_loc[q]) /
+                                    deltat * fe_values.shape_value(i, q) *
+                                    fe_values.JxW(q);
+
+                // Diffusione implicita/esplicita con D al punto q
+                cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
+                                    (D_q[q] * solution_gradient_loc[q]) *
+                                    fe_values.JxW(q);
+                cell_residual(i) -= (1 - theta) * fe_values.shape_grad(i, q) *
+                                    (D_q[q] * solution_old_gradient_loc[q]) *
+                                    fe_values.JxW(q);
+
+                // Reazione (theta-scheme)
+                cell_residual(i) += theta * alpha_loc *
+                                    (1 - solution_loc[q]) * solution_loc[q] *
+                                    fe_values.shape_value(i, q) *
+                                    fe_values.JxW(q);
+                cell_residual(i) += (1 - theta) * alpha_loc *
+                                    (1 - solution_old_loc[q]) * solution_old_loc[q] *
+                                    fe_values.shape_value(i, q) *
+                                    fe_values.JxW(q);
+              }
           }
-          alpha_loc = alpha.gray_value();
-      }else{ // isotropic matter case and/or white matter cell
-        for (unsigned int q = 0; q < n_q; ++q)
-          {
-            D.white_tensor_value(fe_values.quadrature_point(q), D_loc);
-          }
-          alpha_loc = alpha.white_value();
-      }
-      
-      for (unsigned int q = 0; q < n_q; ++q)
-        {
-          for (unsigned int i = 0; i < dofs_per_cell; ++i)
-            {
-              for (unsigned int j = 0; j < dofs_per_cell; ++j)
-                {
-                  // Mass matrix.
-                  cell_matrix(i, j) += fe_values.shape_value(i, q) *
-                                       fe_values.shape_value(j, q) / deltat *
-                                       fe_values.JxW(q);
-
-                  // Non-linear stiffness matrix, first term.
-                  cell_matrix(i, j) += theta * fe_values.shape_grad(i, q) *
-                                       (D_loc * fe_values.shape_grad(j, q)) *
-                                       fe_values.JxW(q);
-
-                  // Non-linear stiffness matrix, second term.
-                  cell_matrix(i, j) += theta * alpha_loc *
-                                       (2.0 * solution_loc[q] - 1.0) *
-                                       fe_values.shape_value(i, q) *
-                                       fe_values.shape_value(j, q) *
-                                       fe_values.JxW(q);
-                }
-
-              // Assemble the residual vector (with changed sign).
-
-              // Time derivative term.
-              cell_residual(i) -= (solution_loc[q] - solution_old_loc[q]) /
-                                  deltat * fe_values.shape_value(i, q) *
-                                  fe_values.JxW(q);
-
-              // Diffusion terms.
-              cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
-                                  (D_loc * solution_gradient_loc[q]) *
-                                  fe_values.JxW(q);
-              cell_residual(i) -= (1 - theta) * fe_values.shape_grad(i, q) *
-                                  (D_loc * solution_old_gradient_loc[q]) *
-                                  fe_values.JxW(q);
-              // Reaction terms.
-              cell_residual(i) += theta * alpha_loc *
-                                  (1 - solution_loc[q]) * solution_loc[q] *
-                                  fe_values.shape_value(i, q) *
-                                  fe_values.JxW(q);
-              cell_residual(i) += (1 - theta) * alpha_loc *
-                                  (1 - solution_old_loc[q]) * solution_old_loc[q] *
-                                  fe_values.shape_value(i, q) *
-                                  fe_values.JxW(q);
-
-              // Forcing term. == 0
-              // cell_residual(i) += f_loc * fe_values.shape_value(i, q) * fe_values.JxW(q);
-            }
-        }
 
       cell->get_dof_indices(dof_indices);
 
@@ -386,25 +385,44 @@ DiffusionNonLinear::solve()
     pcout << "-----------------------------------------------" << std::endl;
   }
 
-  unsigned int time_step = 0;
+// --- snapshot annuali robusti ---
+unsigned int next_year_to_write = 1;   // t=0 già scritto
+const double tol = 1e-12;
 
-  while (time < T - 0.5 * deltat)
-    {
-      time += deltat;
-      ++time_step;
+pcout << "[snapshot] mode: yearly, T=" << T
+      << ", dt=" << deltat << std::endl;
 
-      // Store the old solution, so that it is available for assembly.
-      solution_old = solution;
+unsigned int time_step = 0;
 
-      pcout << "n = " << std::setw(3) << time_step << ", t = " << std::setw(5)
-            << std::fixed << time << std::endl;
+while (time < T - 0.5 * deltat)
+{
+  time += deltat;
+  ++time_step;
 
-      // At every time step, we invoke Newton's method to solve the non-linear
-      // problem.
-      solve_newton();
+  solution_old = solution;
 
-      output(time_step);
+  pcout << "n = " << std::setw(3) << time_step
+        << ", t = " << std::setw(5) << std::fixed << time << std::endl;
 
-      pcout << std::endl;
-    }
+  solve_newton();
+
+  // Scrivi quando oltrepassi un intero (1,2,...)
+  while (next_year_to_write <= static_cast<unsigned int>(std::floor(T + tol)) &&
+         time + tol >= static_cast<double>(next_year_to_write))
+  {
+    output(next_year_to_write);
+    pcout << "[output] wrote year " << next_year_to_write << std::endl;
+    ++next_year_to_write;
+  }
+
+  pcout << std::endl;
+}
+
+// snapshot finale se T non è intero (facoltativo)
+if (std::fabs(time - T) <= 0.5 * deltat + tol &&
+    (std::fabs(T - std::round(T)) > tol))
+{
+  output(static_cast<unsigned int>(std::lround(T)));
+  pcout << "[output] wrote final snapshot at t~" << T << std::endl;
+}
 }
