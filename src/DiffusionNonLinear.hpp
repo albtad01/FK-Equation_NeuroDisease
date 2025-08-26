@@ -185,7 +185,7 @@ public:
 
           default:
             AssertThrow(false, ExcMessage("Invalid axonal field type."));
-            return 0.0; // quiet compiler
+            return 0.0;
         }
     }
 
@@ -201,7 +201,7 @@ public:
     const double d_axn;
     const double d_ext;
     const int    axonal_field; // (1: isotropic, 2: radial, 3: circular, 4: axonal-based)
-  }; // <-- end class FunctionD
+  };
 
   // Function for the alpha coefficient.
   class FunctionAlpha : public Function<dim>
@@ -364,7 +364,7 @@ protected:
 
   // Discretization. ///////////////////////////////////////////////////////////
   const std::string mesh_file_name;
-  const std::string output_dir; // (oggetto, non riferimento)
+  const std::string output_dir;
   const unsigned int r;
   const double deltat;
   const double theta;

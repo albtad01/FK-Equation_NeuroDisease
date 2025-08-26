@@ -49,7 +49,7 @@ DiffusionNonLinear::setup(const Point<dim> &center_)
               bool is_gray = false;
               for (const auto &core : boundary_cores)
               {
-                  if (cell->center().distance(core) < 3.0) // TODO: change distance_threshold instead of 5.0
+                  if (cell->center().distance(core) < 3.0)
                   {
                       cell->set_material_id(1); // Set material ID to 1 for gray matter
                       gray_count++;
@@ -170,21 +170,17 @@ DiffusionNonLinear::assemble_system()
       fe_values.get_function_values(solution_old, solution_old_loc);
       fe_values.get_function_gradients(solution_old, solution_old_gradient_loc);
 
-        // Valuta D in ogni punto di quadratura (dipende da x e da n(x)!)
+        // Evaluate D over the quadrature points
         std::vector<Tensor<2, dim>> D_q(n_q);
         double alpha_loc;
 
-        if (matter_type && cell->material_id())  // cella di materia grigia
+        if (matter_type && cell->material_id())  // gray matter
           {
-            constexpr double gray_diff_scale = 0.5; // <-- fattore <1: più piccolo = più lento
             for (unsigned int q = 0; q < n_q; ++q)
-              {
-                D.gray_tensor_value(fe_values.quadrature_point(q), D_q[q]);
-                D_q[q] *= gray_diff_scale; // <-- scala D in gray
-              }
+              D.gray_tensor_value(fe_values.quadrature_point(q), D_q[q]);
             alpha_loc = alpha.gray_value();
           }
-        else // materia bianca (o caso isotropo globale)
+        else // white matter (or global isotropic case)
           {
             for (unsigned int q = 0; q < n_q; ++q)
               D.white_tensor_value(fe_values.quadrature_point(q), D_q[q]);
@@ -201,12 +197,12 @@ DiffusionNonLinear::assemble_system()
                                         fe_values.shape_value(j, q) / deltat *
                                         fe_values.JxW(q);
 
-                    // Termine diffusivo con D valutato nel punto di quadratura q
+                    // Diffusion term
                     cell_matrix(i, j) += theta * fe_values.shape_grad(i, q) *
                                         (D_q[q] * fe_values.shape_grad(j, q)) *
                                         fe_values.JxW(q);
 
-                    // Termine non lineare di reazione (derivata)
+                    // Reaction term
                     cell_matrix(i, j) += theta * alpha_loc *
                                         (2.0 * solution_loc[q] - 1.0) *
                                         fe_values.shape_value(i, q) *
@@ -214,12 +210,12 @@ DiffusionNonLinear::assemble_system()
                                         fe_values.JxW(q);
                   }
 
-                // Residuo (con segno cambiato): derivata temporale
+                // Residual (with changed sign): time derivative
                 cell_residual(i) -= (solution_loc[q] - solution_old_loc[q]) /
                                     deltat * fe_values.shape_value(i, q) *
                                     fe_values.JxW(q);
 
-                // Diffusione implicita/esplicita con D al punto q
+                // Residual (with changed sign): implicit/explicit diffusion term
                 cell_residual(i) -= theta * fe_values.shape_grad(i, q) *
                                     (D_q[q] * solution_gradient_loc[q]) *
                                     fe_values.JxW(q);
@@ -227,7 +223,7 @@ DiffusionNonLinear::assemble_system()
                                     (D_q[q] * solution_old_gradient_loc[q]) *
                                     fe_values.JxW(q);
 
-                // Reazione (theta-scheme)
+                // Residual (with changed sign): reaction term
                 cell_residual(i) += theta * alpha_loc *
                                     (1 - solution_loc[q]) * solution_loc[q] *
                                     fe_values.shape_value(i, q) *
@@ -273,26 +269,39 @@ DiffusionNonLinear::assemble_system()
 }
 
 void
-DiffusionNonLinear::solve_linear_system() // TODO find best solver and preconditioner
+DiffusionNonLinear::solve_linear_system()
 {
   SolverControl solver_control(1000, 1e-6 * residual_vector.l2_norm());
 
   //SolverGMRES<TrilinosWrappers::MPI::Vector> solver(solver_control);
   SolverMinRes<TrilinosWrappers::MPI::Vector> solver(solver_control);
+  //SolverCG<TrilinosWrappers::MPI::Vector> solver(solver_control);
 
-  TrilinosWrappers::PreconditionSSOR      preconditioner;
-  preconditioner.initialize(
-    jacobian_matrix, TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
+//  TrilinosWrappers::PreconditionSSOR preconditioner;
+//  preconditioner.initialize(jacobian_matrix,
+//                            TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
 
-//  TrilinosWrappers::PreconditionILU      preconditioner;
-//    preconditioner.initialize(jacobian_matrix,
-//                                 TrilinosWrappers::PreconditionILU::AdditionalData(1.0));
+//// ILU is fastest, for theoretical guarantees and/or wide parallelism fallback to AMG /////////////////////
+  TrilinosWrappers::PreconditionILU preconditioner;
+  preconditioner.initialize(jacobian_matrix,
+                            TrilinosWrappers::PreconditionILU::AdditionalData(0.0));
                  
-//   TrilinosWrappers::PreconditionAMG preconditioner;
-//   preconditioner.initialize(jacobian_matrix);
+//  TrilinosWrappers::PreconditionAMG preconditioner;
+//  TrilinosWrappers::PreconditionAMG::AdditionalData amg_data;
+//  amg_data.elliptic = true;
+//  amg_data.higher_order_elements = true;
+//  amg_data.smoother_sweeps = 2;
+//  amg_data.aggregation_threshold = 0.02;
+//  preconditioner.initialize(jacobian_matrix, amg_data);
 
+//  TrilinosWrappers::PreconditionIC preconditioner;
+//  preconditioner.initialize(jacobian_matrix, TrilinosWrappers::PreconditionIC::AdditionalData(1.0));
+
+  auto start = std::chrono::high_resolution_clock::now();
   solver.solve(jacobian_matrix, delta_owned, residual_vector, preconditioner);
-  pcout << "  " << solver_control.last_step() << " MINRES iterations" << std::endl;
+  auto end = std::chrono::high_resolution_clock::now();
+  auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  pcout << "  " << solver_control.last_step() << " MINRES iterations in " << duration << " ms" << std::endl;
 }
 
 void
@@ -385,44 +394,39 @@ DiffusionNonLinear::solve()
     pcout << "-----------------------------------------------" << std::endl;
   }
 
-// --- snapshot annuali robusti ---
-unsigned int next_year_to_write = 1;   // t=0 già scritto
-const double tol = 1e-12;
+  // write output every year
+  unsigned int next_year_to_write = 1;
+  const double tol = 1e-12;
 
-pcout << "[snapshot] mode: yearly, T=" << T
-      << ", dt=" << deltat << std::endl;
+  pcout << "writing output yearly, T=" << T
+        << ", dt=" << deltat << std::endl;
 
-unsigned int time_step = 0;
+  unsigned int time_step = 0;
 
-while (time < T - 0.5 * deltat)
-{
-  time += deltat;
-  ++time_step;
-
-  solution_old = solution;
-
-  pcout << "n = " << std::setw(3) << time_step
-        << ", t = " << std::setw(5) << std::fixed << time << std::endl;
-
-  solve_newton();
-
-  // Scrivi quando oltrepassi un intero (1,2,...)
-  while (next_year_to_write <= static_cast<unsigned int>(std::floor(T + tol)) &&
-         time + tol >= static_cast<double>(next_year_to_write))
+  while (time < T - 0.5 * deltat)
   {
-    output(next_year_to_write);
-    pcout << "[output] wrote year " << next_year_to_write << std::endl;
-    ++next_year_to_write;
+    time += deltat;
+    ++time_step;
+
+    solution_old = solution;
+
+    pcout << "n = " << std::setw(3) << time_step
+          << ", t = " << std::setw(5) << std::fixed << time << std::endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
+    solve_newton();
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    pcout << "--> Newton solved in " << duration << " ms" << std::endl;
+
+    if (next_year_to_write <= static_cast<unsigned int>(std::floor(T + tol)) &&
+        time + tol >= static_cast<double>(next_year_to_write))
+    {
+      output(next_year_to_write);
+      pcout << "--- wrote year " << next_year_to_write << " ---" << std::endl;
+      ++next_year_to_write;
+    }
+
+    pcout << std::endl;
   }
-
-  pcout << std::endl;
-}
-
-// snapshot finale se T non è intero (facoltativo)
-if (std::fabs(time - T) <= 0.5 * deltat + tol &&
-    (std::fabs(T - std::round(T)) > tol))
-{
-  output(static_cast<unsigned int>(std::lround(T)));
-  pcout << "[output] wrote final snapshot at t~" << T << std::endl;
-}
 }
