@@ -282,17 +282,17 @@ DiffusionNonLinear::solve_linear_system()
 //                            TrilinosWrappers::PreconditionSSOR::AdditionalData(1.0));
 
 //// ILU is fastest, for theoretical guarantees and/or wide parallelism fallback to AMG /////////////////////
-  TrilinosWrappers::PreconditionILU preconditioner;
-  preconditioner.initialize(jacobian_matrix,
-                            TrilinosWrappers::PreconditionILU::AdditionalData(0.0));
+//  TrilinosWrappers::PreconditionILU preconditioner;
+//  preconditioner.initialize(jacobian_matrix,
+//                            TrilinosWrappers::PreconditionILU::AdditionalData(0.0));
                  
-//  TrilinosWrappers::PreconditionAMG preconditioner;
-//  TrilinosWrappers::PreconditionAMG::AdditionalData amg_data;
-//  amg_data.elliptic = true;
-//  amg_data.higher_order_elements = true;
-//  amg_data.smoother_sweeps = 2;
-//  amg_data.aggregation_threshold = 0.02;
-//  preconditioner.initialize(jacobian_matrix, amg_data);
+  TrilinosWrappers::PreconditionAMG preconditioner;
+  TrilinosWrappers::PreconditionAMG::AdditionalData amg_data;
+  amg_data.elliptic = true;
+  amg_data.higher_order_elements = true;
+  amg_data.smoother_sweeps = 2;
+  amg_data.aggregation_threshold = 0.02;
+  preconditioner.initialize(jacobian_matrix, amg_data);
 
 //  TrilinosWrappers::PreconditionIC preconditioner;
 //  preconditioner.initialize(jacobian_matrix, TrilinosWrappers::PreconditionIC::AdditionalData(1.0));
