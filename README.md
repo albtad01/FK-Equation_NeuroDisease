@@ -39,3 +39,6 @@ mesh_file_name,degree,T,deltat,theta,matter_type,protein_type,axonal_field,d_axn
 ```
 will run two simulations, one for each line after the header.
 The first runs an isotropic simulation studying amyloid-beta deposits with radial axons, while the second runs an  anisotropic (white/gray matter) simulation studying TDP-43 inclusions with circumferential axons.
+
+An example of the output of the simulation visualized in paraview is:
+![Simulation Output](media/TDP.gif)
