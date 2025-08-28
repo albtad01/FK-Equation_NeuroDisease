@@ -39,7 +39,12 @@ main(int argc, char *argv[])
       );
 
       problem.setup(center);
+      auto start = std::chrono::high_resolution_clock::now();
       problem.solve();
+      auto end = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+      if (Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
+        std::cout << "Problem solved in " << std::fixed << std::setprecision(3) << duration << " seconds" << std::endl << std::endl;
     }
 
   return 0;
