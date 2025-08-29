@@ -8,9 +8,9 @@ Mesh files should not be uploaded to the repository. If applicable, upload `gmsh
 ### Mesh processing
 The mesh for the brain is in stl format, to convert it to msh run the following:
 ```bash
-$ cd mesh
-$ gmsh brain.geo -3 -format msh2 -o brain.msh
-$ cd ..
+cd mesh
+gmsh brain.geo -3 -format msh2 -o brain.msh
+cd ..
 ```
 
 ### Compiling
@@ -40,5 +40,5 @@ mesh_file_name,degree,T,deltat,theta,matter_type,protein_type,axonal_field,d_axn
 will run two simulations, one for each line after the header.
 The first runs an isotropic simulation studying amyloid-beta deposits with radial axons, while the second runs an  anisotropic (white/gray matter) simulation studying TDP-43 inclusions with circumferential axons.
 
-An example of the output of the simulation visualized in paraview is:
+An example of the output of the simulation visualized in paraview is (GIF, refresh page for animation):
 ![Simulation Output](media/TDP.gif)
