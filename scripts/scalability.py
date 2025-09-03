@@ -43,9 +43,6 @@ plt.loglog(processes, memory, marker='o', label='Memory Usage', linewidth=2)
 plt.xlabel('Number of Processes')
 plt.ylabel('Memory (MB)')
 plt.title('Memory Usage Plot')
-mem_ref = memory[3]
-mem_ref_line = mem_ref * (processes / processes[3])
-plt.loglog(processes, mem_ref_line, '--', label='First-Order Reference', linewidth=1.5)
 
 plt.gca().xaxis.set_major_formatter(NullFormatter())
 plt.gca().xaxis.set_minor_formatter(NullFormatter())
