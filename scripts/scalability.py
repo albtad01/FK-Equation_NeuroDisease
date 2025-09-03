@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.ticker import NullFormatter
 
-processes = np.array([1, 2, 4, 8, 16, 32, 64])
-times = np.array([2422.912, 1336.381, 751.122, 436.718, 237.379, 122.979, 86.459])
-memory = np.array([1386.785, 2250.618, 3594.989, 4458.447, 6304.562, 10738.0, 20697.175])
+processes = np.array([1, 2, 4, 8, 16, 32, 64, 128])
+times = np.array([2422.912, 1336.381, 751.122, 436.718, 237.379, 122.979, 86.459, 340.4])
+memory = np.array([1386.785, 2250.618, 3594.989, 4458.447, 6304.562, 10738.0, 20697.175, 41313.585])
 
 plt.figure(figsize=(8, 6))
 plt.loglog(processes, times, marker='o', label='Numerical Time', linewidth=2)
