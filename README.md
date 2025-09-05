@@ -2,9 +2,6 @@
 
 ![TDP-43 simulation](media/TDP.gif)
 
-> Parallel reaction–diffusion solver (Fisher–Kolmogorov) on tetrahedral brain meshes.  
-> Space: simplex FEM (deal.II). Time: θ–method. Nonlinearity: Newton. Output: VTU/PVTU.
-
 ---
 
 ## Overview
@@ -29,7 +26,7 @@ Main binary: `build/FisherKolmogorov`
 
 - C++17, CMake ≥ 3.20
 - MPI (e.g., OpenMPI)
-- deal.II 9.5.x compiled with Trilinos
+- deal.II 9.5.x
 - Trilinos
 - Gmsh for mesh generation
 
@@ -39,7 +36,7 @@ Main binary: `build/FisherKolmogorov`
 
 ## Mesh generation
 
-We keep STL and `.geo` scripts in `mesh/`. Generate a `.msh` (v2) with:
+We keep STL and `.geo` scripts in `mesh/`. Generate a `.msh` file with:
 ```bash
 cd mesh
 gmsh brain.geo -3 -format msh2 -o brain.msh
@@ -72,12 +69,12 @@ make -j
 
 ## Run
 
-The executable reads a CSV with one line per simulation:
+The executable reads a CSV file with one line per simulation:
 ```bash
 mpirun -n <N_ranks> ./FisherKolmogorov ../src/parameters.csv
 ```
 
-### Example `src/parameters.csv`:
+### Example `src/parameters.csv` file:
 ```csv
 mesh_file_name,degree,T,deltat,theta,matter_type,protein_type,axonal_field,d_axn,d_ext,alpha,output_dir
 ../mesh/brain.msh,2,20.0,0.25,1.0,0,1,2,10.0,5.0,0.25,amyloid
@@ -90,7 +87,7 @@ mesh_file_name,degree,T,deltat,theta,matter_type,protein_type,axonal_field,d_axn
 
 | Field           | Meaning / Allowed values                  | Example               |
 |------------------|-------------------------------------------|-----------------------|
-| `mesh_file_name` | Path to Gmsh v2 mesh                     | `../mesh/brain.msh`   |
+| `mesh_file_name` | Path to the mesh                         | `../mesh/brain.msh`   |
 | `degree`         | FE polynomial degree \(r\)               | `2`                   |
 | `T`              | Final time                               | `20.0`                |
 | `deltat`         | Time step                                | `0.25`                |
@@ -101,9 +98,7 @@ mesh_file_name,degree,T,deltat,theta,matter_type,protein_type,axonal_field,d_axn
 | `d_axn`          | Axonal diffusivity                      | `10.0`                |
 | `d_ext`          | Extra-axonal diffusivity                | `5.0`                 |
 | `alpha`          | Growth coefficient                      | `0.25`                |
-| `output_dir`     | Output folder for VTU/PVTU              | `tdp43`               |
-
-Output: VTU files + a PVTU record under `./<output_dir>/`, including a partitioning field.
+| `output_dir`     | Output folder for VTU/PVTU files        | `tdp43`               |
 
 ---
 
