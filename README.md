@@ -9,14 +9,14 @@
 
 ## Overview
 
-This repository contains a C++/MPI solver for the Fisher–Kolmogorov equation modeling protein spreading in neurodegenerative diseases. The diffusion tensor supports anisotropy with different axonal fields and an optional white/gray matter split. The code uses deal.II (fully distributed triangulations) and Trilinos (solvers/AMG).
+This repository contains a C++/MPI solver for the Fisher–Kolmogorov equation modeling protein spreading in neurodegenerative diseases. The diffusion tensor supports anisotropy with different axonal fields and an optional white/gray matter split. The code uses deal.II and Trilinos. The scalability tests were performed on MeluXina, a petascale supercomputer within the EuroHPC Joint Undertaking.
 
 **Folders**
 ```
 .
 ├─ docs/    # report, notes, spreadsheets
 ├─ media/   # figures, GIFs, videos (see TDP.gif above)
-├─ mesh/    # STL + Gmsh scripts (no large .msh tracked)
+├─ mesh/    # STL + Gmsh scripts
 ├─ scripts/ # scalability test scripts for MeluXina
 └─ src/     # C++ sources and parameters.csv
 ```
@@ -30,7 +30,7 @@ Main binary: `build/FisherKolmogorov`
 - C++17, CMake ≥ 3.20
 - MPI (e.g., OpenMPI)
 - deal.II 9.5.x compiled with Trilinos
-- Trilinos (AMG + iterative solvers)
+- Trilinos
 - Gmsh for mesh generation
 
 > On MeluXina we used: `foss/2023a`, `deal.II/9.5.2-foss-2023a-trilinos`, `SuiteSparse/7.1.0`, `OpenMPI/4.1.5`.
@@ -58,7 +58,7 @@ cmake ..
 make -j
 ```
 
-### MeluXina (CPU-only on the gpu partition modules)
+### on MeluXina Supercomputer
 ```bash
 module --force purge
 module load env/staging/2023.1 foss/2023a \
@@ -100,7 +100,7 @@ mesh_file_name,degree,T,deltat,theta,matter_type,protein_type,axonal_field,d_axn
 | `axonal_field`   | 1 isotropic, 2 radial, 3 circular, 4 axonal | `3`                 |
 | `d_axn`          | Axonal diffusivity                      | `10.0`                |
 | `d_ext`          | Extra-axonal diffusivity                | `5.0`                 |
-| `alpha`          | Logistic reaction coefficient           | `0.25`                |
+| `alpha`          | Growth coefficient                      | `0.25`                |
 | `output_dir`     | Output folder for VTU/PVTU              | `tdp43`               |
 
 Output: VTU files + a PVTU record under `./<output_dir>/`, including a partitioning field.
@@ -125,7 +125,7 @@ Example batch for CPU-only runs on the gpu partition:
 module --force purge
 module load env/staging/2023.1 foss/2023a deal.II/9.5.2-foss-2023a-trilinos
 
-mpirun ./FisherKolmogorov ../src/parameters.csv
+mpirun -np $SLURM_NTASKS ./FisherKolmogorov ../src/parameters.csv
 ```
 
 - Up to 64 ranks: 1 node.
@@ -136,8 +136,8 @@ mpirun ./FisherKolmogorov ../src/parameters.csv
 ## Scripts
 
 The folder `scripts/` contains:
-- `compile_run_sim.sh`, `run_sim.sh` — batch scripts used for scalability runs.
-- Several job files for different process counts.
+- `compile_run_sim.sh`, `run_sim.sh` — batch scripts used for scalability runs on MeluXina.
+- `CMakeLists.txt` configuration file for MeluXina supercomputer.
 - `scalability.py` — script to generate the strong-scaling and memory plots used in the report.
 
 ---
